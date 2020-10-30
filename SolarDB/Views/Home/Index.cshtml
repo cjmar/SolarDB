@@ -1,0 +1,22 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<p>
+    Here is going to be an SRS where explanations for everything will be. It is basically going to be a
+    large document that serves a sort of research oriented purpose. Graphs and other data will be shown
+    off
+</p>
+<br/>
+<p>This is a web app which loads data from <a href="https://www.kaggle.com/anikannal/solar-power-generation-data">this</a> dataset to perform actions on it.</p>
+<p>The file "Plant_1_Generation_Data.csv" Has been modifed from the original source. The date format was different than the others and unreadable using DateTime.Parse()</p>
+<br />
+<p>
+    The data is in CSV form and exists in the local folders of the webapp in case a backup of the data is needed. All of the data has been seeded into a database so relations can be formed and saved.
+    Actions can then be performed such as graphing the data and attempting to answer three important questions.
+    <ul>
+        <li>Can we predict the power generation for next couple of days? - this allows for better grid management</li>
+        <li>Can we identify the need for panel cleaning/maintenance?</li>
+        <li>Can we identify faulty or suboptimally performing equipment?</li>
+    </ul>
+</p>

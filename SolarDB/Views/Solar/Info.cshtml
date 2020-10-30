@@ -1,0 +1,60 @@
+﻿@model IEnumerable<SolarDB.Models.WeatherReading>
+
+@{
+    ViewData["Title"] = "Index";
+}
+
+<h1>Index</h1>
+
+<p>
+    <a asp-action="Create">Create New</a>
+</p>
+<h1>Weather data for plant @Html.DisplayFor(model => model.First().PlantNumber)</h1>
+<table class="table" id="sortableTable">
+    <thead>
+        <tr>
+            <th>
+                @Html.DisplayNameFor(model => model.WeatherReadingID)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.DateAndTime)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.AmbientTemp)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.ModuleTemp)
+            </th>
+            <th>
+                @Html.DisplayNameFor(model => model.Irridation)
+            </th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.WeatherReadingID)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.DateAndTime)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.AmbientTemp)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.ModuleTemp)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Irridation)
+            </td>
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.WeatherReadingID">Edit</a> |
+                <a asp-action="Details" asp-route-id="@item.WeatherReadingID">Details</a> |
+                <a asp-action="Delete" asp-route-id="@item.WeatherReadingID">Delete</a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
