@@ -5,7 +5,7 @@ ASP Core 3.1
 Visual Studios 2019
 
 This web app utilizes data downloaded from [here](https://www.kaggle.com/anikannal/solar-power-generation-data), which can also be found in the Data folder of this project.
-There is also a script which fixes an unparsable date format found in Plant_1_Generation_Data.csv. The data is taken from a two solar power plants in India over a period of 
+There is also a script which fixes an unparsable date format found in Plant_1_Generation_Data.csv. The data is taken from two solar power plants in India over a period of 
 34 days.
 
 Currently all this webapp does is parse these 4 files into a database using the schema found in solardb_tables.vsd Visio file.
