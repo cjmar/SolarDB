@@ -7,9 +7,11 @@ using std::cout;
 using std::string;
 
 /*
-	This fix will only work on the Plant_1_Generation_Data.csv file
-
-	Changes the date so DateTime can understand it
+	This script fixes the date format in the Plant_1_Generation_Data.csv file as part of the SolarDB project.
+	
+	Rename the file as "Plant_1_Generation_Data_1.csv", or change the input_file variable.
+	The Script will create a correctly named file that can be used directly.
+	
 */
 
 int main()
@@ -32,16 +34,11 @@ int main()
 
 		while (std::getline(input, line) && i != numLines)
 		{
-			//string date = line.substr(0, line.find(" "));
-			//cout << date << " || ";
-
 			std::swap(line[0], line[3]);
 			std::swap(line[1], line[4]);
-			//fixed += date.substr(6, date.length());
 
 			if(output.is_open())
 				output << line << "\n";
-			
 		}
 
 		output.close();
