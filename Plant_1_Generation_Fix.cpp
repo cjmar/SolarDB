@@ -32,13 +32,12 @@ int main()
 		std::getline(input, line);
 		output << line << "\n";
 
-		while (std::getline(input, line) && i != numLines)
+		while (std::getline(input, line) && output.is_open())
 		{
 			std::swap(line[0], line[3]);
 			std::swap(line[1], line[4]);
 
-			if(output.is_open())
-				output << line << "\n";
+			output << line << "\n";
 		}
 
 		output.close();
