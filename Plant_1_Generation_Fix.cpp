@@ -8,17 +8,14 @@ using std::string;
 
 /*
 	This script fixes the date format in the Plant_1_Generation_Data.csv file as part of the SolarDB project.
-	
+
 	Rename the file as "Plant_1_Generation_Data_1.csv", or change the input_file variable.
 	The Script will create a correctly named file that can be used directly.
-	
 */
 
 int main()
 {
-	int numLines = 15;
-	int i = 0;
-
+	//File string names
 	string input_file = "Plant_1_Generation_Data_1.csv";
 	string output_file = "Plant_1_Generation_Data.csv";
 
@@ -29,8 +26,8 @@ int main()
 	{
 		string line;
 
+		//First line is table names
 		std::getline(input, line);
-		output << line << "\n";
 
 		while (std::getline(input, line) && output.is_open())
 		{
