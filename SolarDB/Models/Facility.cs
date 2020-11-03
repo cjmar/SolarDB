@@ -6,12 +6,10 @@ using System.Threading.Tasks;
 
 namespace SolarDB.Models
 {
-    public class PowerSource
+    public class Facility
     {
-        public int PowerSourceID { get; set; }
+        public int FacilityID { get; set; }
 
-        [Display(Name = "Power Array")]
-        public string SourceKey { get; set; }
         [Display(Name = "Facility")]
         public int PlantNumber { get; set; }
     }

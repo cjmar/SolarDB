@@ -1,60 +1,182 @@
-﻿@model IEnumerable<SolarDB.Models.WeatherReading>
+﻿@model SolarDB.ViewModel.SolarViewModel
 
 @{
-    ViewData["Title"] = "Index";
+    ViewData["Title"] = "Readings";
 }
 
-<h1>Index</h1>
+<style>
 
-<p>
-    <a asp-action="Create">Create New</a>
-</p>
-<h1>Weather data for plant @Html.DisplayFor(model => model.First().PlantNumber)</h1>
+    #container1 {
+        width: 100%;
+        height: 100%;
+    }
+
+    .sideBySide {
+        width: 50%;
+        height: 100%;
+        float: left;
+        overflow-y: auto;
+    }
+
+    .tableStyle {
+        border: 1px solid black;
+    }
+
+    th
+    {
+        border-left:solid black 1px;
+    }
+
+    .tableStyle tr th
+    {
+        font-size:8pt;
+        text-align:center;
+    }
+
+    .clear {
+        clear: both;
+    }
+</style>
+
+<!-- ###########################################
+     ###########################################
+     ###########################################
+     ########################################### -->
+
+<div id="container1">
+    <h1>Show first 50 Weather Readings for a plant</h1>
+</div>
+
+<div class="clear"></div>
+<div id="container1">
+    @{
+
+        double aTempAvg = 0.0;
+        double mTempAvg = 0.0;
+        double irridAvg = 0.0;
+
+        foreach (var fc in Model.facilities)
+        {
+    <div class="sideBySide">
+        <h3>Plant @fc.PlantNumber</h3>
+        <table class="tableStyle">
+            <thread>
+                <!-- Labels THESE ARE MESSED UP-->
+                <tr>
+                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().DateAndTime))</th>
+                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().AmbientTemp)</th>
+                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().ModuleTemp)</th>
+                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().Irridation)</th>
+                </tr>
+            </thread>
+            <tbody>
+                <!-- Information-->
+                @foreach (var wr in Model.weatherReadings)
+                {
+                    if (wr.PlantNumber == fc.PlantNumber)
+                    {
+                    <tr>
+                    <th>
+                        @Html.DisplayFor(modelItem => wr.DateAndTime)
+                    </th>
+                    <th>
+                       
+                        @Html.DisplayFor(modelItem => wr.AmbientTemp)
+                        @{aTempAvg += wr.AmbientTemp;}
+                    </th>
+                    <th>
+
+                        @Html.DisplayFor(modelItem => wr.ModuleTemp)
+                        @{mTempAvg += wr.ModuleTemp;}
+
+                    </th>
+                    <th>
+
+                        @Html.DisplayFor(modelItem => wr.Irridation)
+                        @{irridAvg += wr.Irridation;}
+                    </th>
+                    </tr>
+                    }
+                }
+            </tbody>
+            <tfoot>
+                <!-- Footer-->
+                <tr>
+                    <th>Averages</th>
+                    <th>
+                        @{aTempAvg /= 50.0;}
+                        @aTempAvg 
+                    </th>
+                    <th>
+                        @{mTempAvg /= 50.0;}
+                        @mTempAvg
+                    </th>
+                    <th>
+                        @{irridAvg /= 50.0;}
+                        @irridAvg
+                    </th>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    }
+    }
+</div>
+
+<!-- ###########################################
+     ###########################################
+     ###########################################
+     ########################################### -->
+
+<!--
+<h1>Weather data for plant Html.DisplayFor(model => model.First().PlantNumber)</h1>
 <table class="table" id="sortableTable">
     <thead>
         <tr>
             <th>
-                @Html.DisplayNameFor(model => model.WeatherReadingID)
+                Html.DisplayNameFor(model => model.WeatherReadingID)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.DateAndTime)
+                Html.DisplayNameFor(model => model.DateAndTime)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.AmbientTemp)
+                Html.DisplayNameFor(model => model.AmbientTemp)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.ModuleTemp)
+                Html.DisplayNameFor(model => model.ModuleTemp)
             </th>
             <th>
-                @Html.DisplayNameFor(model => model.Irridation)
+                Html.DisplayNameFor(model => model.Irridation)
             </th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-@foreach (var item in Model) {
-        <tr>
-            <td>
-                @Html.DisplayFor(modelItem => item.WeatherReadingID)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.DateAndTime)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.AmbientTemp)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.ModuleTemp)
-            </td>
-            <td>
-                @Html.DisplayFor(modelItem => item.Irridation)
-            </td>
-            <td>
-                <a asp-action="Edit" asp-route-id="@item.WeatherReadingID">Edit</a> |
-                <a asp-action="Details" asp-route-id="@item.WeatherReadingID">Details</a> |
-                <a asp-action="Delete" asp-route-id="@item.WeatherReadingID">Delete</a>
-            </td>
-        </tr>
-}
+        foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    Html.DisplayFor(modelItem => item.WeatherReadingID)
+                </td>
+                <td>
+                    Html.DisplayFor(modelItem => item.DateAndTime)
+                </td>
+                <td>
+                    Html.DisplayFor(modelItem => item.AmbientTemp)
+                </td>
+                <td>
+                    Html.DisplayFor(modelItem => item.ModuleTemp)
+                </td>
+                <td>
+                    Html.DisplayFor(modelItem => item.Irridation)
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-id="item.WeatherReadingID">Edit</a> |
+                    <a asp-action="Details" asp-route-id="item.WeatherReadingID">Details</a> |
+                    <a asp-action="Delete" asp-route-id="item.WeatherReadingID">Delete</a>
+                </td>
+            </tr>
+        }
     </tbody>
 </table>
+    -->

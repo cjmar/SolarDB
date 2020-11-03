@@ -10,8 +10,8 @@ using SolarDB.Data;
 namespace SolarDB.Migrations
 {
     [DbContext(typeof(SolarContext))]
-    [Migration("20201030005110_initDB")]
-    partial class initDB
+    [Migration("20201102201754_Init")]
+    partial class Init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
@@ -20,6 +20,21 @@ namespace SolarDB.Migrations
                 .HasAnnotation("ProductVersion", "3.1.9")
                 .HasAnnotation("Relational:MaxIdentifierLength", 128)
                 .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+            modelBuilder.Entity("SolarDB.Models.Facility", b =>
+                {
+                    b.Property<int>("FacilityID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int")
+                        .HasAnnotation("SqlServer:ValueGenerationStrategy", SqlServerValueGenerationStrategy.IdentityColumn);
+
+                    b.Property<int>("PlantNumber")
+                        .HasColumnType("int");
+
+                    b.HasKey("FacilityID");
+
+                    b.ToTable("Facilities");
+                });
 
             modelBuilder.Entity("SolarDB.Models.PowerReading", b =>
                 {

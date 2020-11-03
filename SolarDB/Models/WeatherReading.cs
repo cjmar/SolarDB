@@ -10,11 +10,17 @@ namespace SolarDB.Models
     {
         public int WeatherReadingID { get; set; }
 
+        [Display(Name = "Facility")]
         public int PlantNumber { get; set; }
+
+        [Display(Name = "Date Time")]
         public DateTime DateAndTime { get; set; }
 
-        public double AmbientTemp { get; set; }
-        public double ModuleTemp { get; set; }
-        public double Irridation { get; set; }
+        [Display(Name = "Ambient Temperature")]
+        public double AmbientTemp { get; set; }     //C
+        [Display(Name = "Module Temperature")]
+        public double ModuleTemp { get; set; }      //C
+        [Display(Name = "Irridation")]
+        public double Irridation { get; set; }      //Best guess: Solar radiation sensor. Measures power of light and heat from sun
     }
 }

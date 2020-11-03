@@ -1,10 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using SolarDB.Data;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 
 namespace SolarDB.Models
@@ -56,6 +58,7 @@ namespace SolarDB.Models
                 using (var reader = new StreamReader("Data/" + file_in))
                 {
                     string line;
+                    bool firstRun = true;
                     System.Diagnostics.Debug.WriteLine("Seeding Database with " + file_in);
 
                     reader.ReadLine(); //First line is human stuff
@@ -63,6 +66,12 @@ namespace SolarDB.Models
                     while ((line = reader.ReadLine()) != null)
                     {
                         var values = line.Split(',');
+
+                        if(firstRun)
+                        {
+                            AddPlantNumber(values[1], context);
+                            firstRun = false;
+                        }
 
                         /*
                         WeatherReading {
@@ -182,6 +191,42 @@ namespace SolarDB.Models
             catch (Exception e)
             {
                 System.Diagnostics.Debug.WriteLine("Error reading from file '" + file_in + "': " + e.Message);
+            }
+        }
+
+        /*  Called from ReadInWeatherSensorData
+         *  Format: DATE_TIME,PLANT_ID,SOURCE_KEY,AMBIENT_TEMPERATURE,MODULE_TEMPERATURE,IRRADIATION
+         *  
+         *  Reads one table into database
+         *  Expects: num - Plant number
+         *           context - Database Context
+         *           
+         *  There are very little facility records    
+         *  Checks the facility doesnt already exist, adds if it does not
+         */
+        static void AddPlantNumber(string value, SolarContext context)
+        {
+            int num = int.Parse(value);
+
+            //Get how many facilities exist with PlantNumber 
+            int? exists = context.Facilities
+                         .Where(f => f.PlantNumber == num)
+                         .Count();
+
+            /*
+                Facility {
+                    PK int FacilityID, auto increment
+                    int PlantNumber }
+            */
+            if (!(exists > 0))
+            {
+                Facility f = new Facility()
+                {
+                    PlantNumber = num,
+                };
+                context.Facilities.Add(f);
+                context.SaveChanges();
+                System.Diagnostics.Debug.WriteLine("Added Facility " + num + " to Database.");
             }
         }
     }

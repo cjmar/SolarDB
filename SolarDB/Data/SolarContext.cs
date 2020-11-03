@@ -16,5 +16,6 @@ namespace SolarDB.Data
         public DbSet<WeatherReading> WeatherReadings { get; set; }
         public DbSet<PowerSource> PowerSources { get; set; }
         public DbSet<PowerReading> PowerReadings { get; set; }
+        public DbSet<Facility> Facilities { get; set; }
     }
 }

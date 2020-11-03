@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using SolarDB.Data;
 using SolarDB.Models;
+using SolarDB.ViewModel;
 
 namespace SolarDB.Controllers
 {
@@ -23,10 +24,26 @@ namespace SolarDB.Controllers
         // GET: Solar
         public async Task<IActionResult> Info()
         {
-            var readings = from r in _context.WeatherReadings select r;
-            readings = readings.OrderBy(d => d.DateAndTime);
+            //var readings = await from r in _context.WeatherReadings select r;
+            //readings = readings.OrderBy(d => d.DateAndTime);
+            var facilities = await _context.Facilities.ToListAsync();
 
-            return View(await readings.ToListAsync());
+            var readings1 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facilities.ElementAt(0).PlantNumber)
+                                                            .OrderBy(d => d.DateAndTime)
+                                                            .Take(50)
+                                                            .ToListAsync();
+
+            var readings2 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facilities.ElementAt(1).PlantNumber)
+                                                            .OrderBy(d => d.DateAndTime)
+                                                            .Take(50)
+                                                            .ToListAsync();
+
+            return View(new SolarViewModel()
+            {
+                weatherReadings = readings1.Concat(readings2),//.OrderBy(d => d.DateAndTime),
+                facilities = facilities
+            });
+            //return View(await readings.ToListAsync());
         }
 
         // GET: Solar/Details/5

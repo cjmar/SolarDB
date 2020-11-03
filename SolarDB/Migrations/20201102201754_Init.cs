@@ -3,10 +3,23 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace SolarDB.Migrations
 {
-    public partial class initDB : Migration
+    public partial class Init : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.CreateTable(
+                name: "Facilities",
+                columns: table => new
+                {
+                    FacilityID = table.Column<int>(nullable: false)
+                        .Annotation("SqlServer:Identity", "1, 1"),
+                    PlantNumber = table.Column<int>(nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Facilities", x => x.FacilityID);
+                });
+
             migrationBuilder.CreateTable(
                 name: "PowerReadings",
                 columns: table => new
@@ -59,6 +72,9 @@ namespace SolarDB.Migrations
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "Facilities");
+
             migrationBuilder.DropTable(
                 name: "PowerReadings");
 
