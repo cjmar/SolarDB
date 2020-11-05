@@ -24,27 +24,55 @@ namespace SolarDB.Controllers
         // GET: Solar
         public async Task<IActionResult> Info()
         {
-            //var readings = await from r in _context.WeatherReadings select r;
-            //readings = readings.OrderBy(d => d.DateAndTime);
-            var facilities = await _context.Facilities.ToListAsync();
 
-            var readings1 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facilities.ElementAt(0).PlantNumber)
+            var facList = await _context.Facilities.ToListAsync();
+
+            var wReadings1 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facList.ElementAt(0).PlantNumber)
                                                             .OrderBy(d => d.DateAndTime)
                                                             .Take(50)
                                                             .ToListAsync();
 
-            var readings2 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facilities.ElementAt(1).PlantNumber)
+            var wReadings2 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facList.ElementAt(1).PlantNumber)
                                                             .OrderBy(d => d.DateAndTime)
                                                             .Take(50)
                                                             .ToListAsync();
 
             return View(new SolarViewModel()
             {
-                weatherReadings = readings1.Concat(readings2),//.OrderBy(d => d.DateAndTime),
-                facilities = facilities
+                weatherReadings = wReadings1.Concat(wReadings2),
+                facilities = facList
             });
             //return View(await readings.ToListAsync());
         }
+
+
+        // POST: Solar
+        [HttpPost, ActionName("Info")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> PostInfo()
+        {
+
+            string formText = HttpContext.Request.Form["TestString"];
+
+            System.Diagnostics.Debug.WriteLine("Recieved form data text: " + formText);
+
+            //HttpContext.Request.Form["UserName"] + ". You are " + HttpContext.Request.Form["UserAge"];
+
+            if (!(formText == null))
+            {
+                DateTime dt = DateTime.Parse(formText);
+                ViewBag.form_data = dt.ToString("dd/MM/yyyy HH:mm:ss");
+            }
+            else
+            {
+                ViewBag.form_data = "Form text was null";
+            }
+            
+
+            return View(new SolarViewModel());
+        }
+
+        /*
 
         // GET: Solar/Details/5
         public async Task<IActionResult> Details(int? id)
@@ -164,6 +192,46 @@ namespace SolarDB.Controllers
             _context.WeatherReadings.Remove(weatherReading);
             await _context.SaveChangesAsync();
             return RedirectToAction(nameof(Index));
+        }
+
+        */
+
+
+        /*  Creates a SolarViewModel from database
+         * 
+         *  Expects parameters used to select tables
+         *  Null values resort to default parmeters
+         *  
+         *    Param         ||  Default value
+         *  Shared:
+         *      Date start      Earliest date in records
+         *      Date finish     Latest date in records
+         *      PlantNumber     First plant in record (not both)
+         *  
+         *  PowerArray:
+         *      SourceKey
+         *      Facility
+         *      
+         *  PowerReading:
+         *      ArrayKey
+         *      DC
+         *      AC
+         *      Daily
+         *      Total
+         *      
+         *  WeatherReading:
+         *      Facility
+         *      Ambient
+         *      Module
+         *      Irridation
+         *      
+         */
+
+        private SolarViewModel SVMBuilder()
+        {
+            SolarViewModel rtn = new SolarViewModel();
+
+            return rtn;
         }
 
         private bool WeatherReadingExists(int id)

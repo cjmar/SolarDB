@@ -12,5 +12,17 @@ namespace SolarDB.ViewModel
         public IEnumerable<PowerReading> powerReadings { get; set; }
         public IEnumerable<PowerSource> powerSources { get; set; }
         public IEnumerable<Facility> facilities { get; set; }
+
+        /*  Constructor so there are no null values passed to View
+         * 
+         * 
+         */
+        public SolarViewModel()
+        {
+            weatherReadings = new List<WeatherReading>();
+            powerReadings = new List<PowerReading>();
+            powerSources = new List<PowerSource>();
+            facilities = new List<Facility>();
+        }
     }
 }

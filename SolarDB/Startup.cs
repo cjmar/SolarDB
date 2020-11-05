@@ -25,7 +25,8 @@ namespace SolarDB
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllersWithViews();
+            //NuGet package: Microsoft.AspNetCore.Mvc.Razor.RuntimeCompilation
+            services.AddControllersWithViews().AddRazorRuntimeCompilation();
 
             services.AddDbContext<SolarContext>(options =>
                 options.UseSqlServer(Configuration.GetConnectionString("SolarDatabase")));

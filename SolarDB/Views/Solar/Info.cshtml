@@ -11,6 +11,14 @@
         height: 100%;
     }
 
+    #formDiv {
+        width: 500px;
+        height: 500px;
+        background-color: blue;
+        margin-left: auto;
+        margin-right: auto;
+    }
+
     .sideBySide {
         width: 50%;
         height: 100%;
@@ -22,15 +30,13 @@
         border: 1px solid black;
     }
 
-    th
-    {
-        border-left:solid black 1px;
+    th {
+        border-left: solid black 1px;
     }
 
-    .tableStyle tr th
-    {
-        font-size:8pt;
-        text-align:center;
+    .tableStyle tr th {
+        font-size: 8pt;
+        text-align: center;
     }
 
     .clear {
@@ -57,126 +63,96 @@
 
         foreach (var fc in Model.facilities)
         {
-    <div class="sideBySide">
-        <h3>Plant @fc.PlantNumber</h3>
-        <table class="tableStyle">
-            <thread>
-                <!-- Labels THESE ARE MESSED UP-->
-                <tr>
-                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().DateAndTime))</th>
-                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().AmbientTemp)</th>
-                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().ModuleTemp)</th>
-                    <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().Irridation)</th>
-                </tr>
-            </thread>
-            <tbody>
-                <!-- Information-->
-                @foreach (var wr in Model.weatherReadings)
-                {
-                    if (wr.PlantNumber == fc.PlantNumber)
-                    {
-                    <tr>
-                    <th>
-                        @Html.DisplayFor(modelItem => wr.DateAndTime)
-                    </th>
-                    <th>
-                       
-                        @Html.DisplayFor(modelItem => wr.AmbientTemp)
-                        @{aTempAvg += wr.AmbientTemp;}
-                    </th>
-                    <th>
+            <div class="sideBySide">
+                <h3>Plant @fc.PlantNumber</h3>
+                <table class="tableStyle">
+                    <thread>
+                        <!-- Labels THESE ARE MESSED UP-->
+                        <tr>
+                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().DateAndTime))</th>
+                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().AmbientTemp)</th>
+                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().ModuleTemp)</th>
+                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().Irridation)</th>
+                        </tr>
+                    </thread>
+                    <tbody>
+                        <!-- Information-->
+                        @foreach (var wr in Model.weatherReadings)
+                        {
+                            if (wr.PlantNumber == fc.PlantNumber)
+                            {
+                                <tr>
+                                    <th>
+                                        @Html.DisplayFor(modelItem => wr.DateAndTime)
+                                    </th>
+                                    <th>
 
-                        @Html.DisplayFor(modelItem => wr.ModuleTemp)
-                        @{mTempAvg += wr.ModuleTemp;}
+                                        @Html.DisplayFor(modelItem => wr.AmbientTemp)
+                                        @{aTempAvg += wr.AmbientTemp;}
+                                    </th>
+                                    <th>
 
-                    </th>
-                    <th>
+                                        @Html.DisplayFor(modelItem => wr.ModuleTemp)
+                                        @{mTempAvg += wr.ModuleTemp;}
 
-                        @Html.DisplayFor(modelItem => wr.Irridation)
-                        @{irridAvg += wr.Irridation;}
-                    </th>
-                    </tr>
-                    }
-                }
-            </tbody>
-            <tfoot>
-                <!-- Footer-->
-                <tr>
-                    <th>Averages</th>
-                    <th>
-                        @{aTempAvg /= 50.0;}
-                        @aTempAvg 
-                    </th>
-                    <th>
-                        @{mTempAvg /= 50.0;}
-                        @mTempAvg
-                    </th>
-                    <th>
-                        @{irridAvg /= 50.0;}
-                        @irridAvg
-                    </th>
-                </tr>
-            </tfoot>
-        </table>
-    </div>
-    }
+                                    </th>
+                                    <th>
+
+                                        @Html.DisplayFor(modelItem => wr.Irridation)
+                                        @{irridAvg += wr.Irridation;}
+                                    </th>
+                                </tr>
+                            }
+                        }
+                    </tbody>
+                    <tfoot>
+                        <!-- Footer-->
+                        <tr>
+                            <th>Averages</th>
+                            <th>
+                                @{aTempAvg /= 50.0;}
+                                @aTempAvg
+                            </th>
+                            <th>
+                                @{mTempAvg /= 50.0;}
+                                @mTempAvg
+                            </th>
+                            <th>
+                                @{irridAvg /= 50.0;}
+                                @irridAvg
+                            </th>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        }
     }
 </div>
 
-<!-- ###########################################
-     ###########################################
-     ###########################################
-     ########################################### -->
+<div class="clear"><br /><br /></div>
 
-<!--
-<h1>Weather data for plant Html.DisplayFor(model => model.First().PlantNumber)</h1>
-<table class="table" id="sortableTable">
-    <thead>
-        <tr>
-            <th>
-                Html.DisplayNameFor(model => model.WeatherReadingID)
-            </th>
-            <th>
-                Html.DisplayNameFor(model => model.DateAndTime)
-            </th>
-            <th>
-                Html.DisplayNameFor(model => model.AmbientTemp)
-            </th>
-            <th>
-                Html.DisplayNameFor(model => model.ModuleTemp)
-            </th>
-            <th>
-                Html.DisplayNameFor(model => model.Irridation)
-            </th>
-            <th></th>
-        </tr>
-    </thead>
-    <tbody>
-        foreach (var item in Model)
-        {
-            <tr>
-                <td>
-                    Html.DisplayFor(modelItem => item.WeatherReadingID)
-                </td>
-                <td>
-                    Html.DisplayFor(modelItem => item.DateAndTime)
-                </td>
-                <td>
-                    Html.DisplayFor(modelItem => item.AmbientTemp)
-                </td>
-                <td>
-                    Html.DisplayFor(modelItem => item.ModuleTemp)
-                </td>
-                <td>
-                    Html.DisplayFor(modelItem => item.Irridation)
-                </td>
-                <td>
-                    <a asp-action="Edit" asp-route-id="item.WeatherReadingID">Edit</a> |
-                    <a asp-action="Details" asp-route-id="item.WeatherReadingID">Details</a> |
-                    <a asp-action="Delete" asp-route-id="item.WeatherReadingID">Delete</a>
-                </td>
-            </tr>
-        }
-    </tbody>
-</table>
-    -->
+@{
+    <div id="formDiv">
+
+        <form method="post" action="">
+            Text String:<br />
+            <input type="date" id="formText" name="TestString" />
+            <input type="submit" value="Submit" />
+        </form>
+    </div>
+
+    if (Context.Request.Method == "POST")
+    {
+        <div class="clear">
+            @{
+                if (@ViewBag.form_data != null)
+                {
+                    <p>
+                    Data was POST'd <br/>
+                    Output text: @ViewBag.form_data
+                    </p>
+                }
+            }
+        </div>
+    }
+}
