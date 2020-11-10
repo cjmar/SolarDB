@@ -1,5 +1,12 @@
 ﻿@model SolarDB.ViewModel.SolarViewModel
 
+<script type="text/javascript">
+    var facilities = @Html.Raw(Json.Serialize(@Model.facilities));
+    var weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
+    var power = @Html.Raw(Json.Serialize(@Model.powerReadings));
+    var source = @Html.Raw(Json.Serialize(@Model.powerSources));
+</script>
+
 @{
     ViewData["Title"] = "Readings";
 }
@@ -12,11 +19,22 @@
     }
 
     #formDiv {
-        width: 500px;
-        height: 500px;
-        background-color: blue;
-        margin-left: auto;
-        margin-right: auto;
+        border: solid 1px black;
+        float:left;
+        padding:2px;
+    }
+
+    .checkBoxContainer
+    {
+        border:solid black 1px;
+        float:left;
+        padding:2px;
+        margin:1px;
+    }
+
+    .checkBoxList
+    {
+        display:none;
     }
 
     .sideBySide {
@@ -28,6 +46,7 @@
 
     .tableStyle {
         border: 1px solid black;
+        padding:1px;
     }
 
     th {
@@ -42,6 +61,14 @@
     .clear {
         clear: both;
     }
+
+    canvas
+    {
+        width:650px;
+        height:500px;
+        border:solid 1px black;
+    }
+
 </style>
 
 <!-- ###########################################
@@ -50,109 +77,70 @@
      ########################################### -->
 
 <div id="container1">
-    <h1>Show first 50 Weather Readings for a plant</h1>
-</div>
-
-<div class="clear"></div>
-<div id="container1">
-    @{
-
-        double aTempAvg = 0.0;
-        double mTempAvg = 0.0;
-        double irridAvg = 0.0;
-
-        foreach (var fc in Model.facilities)
-        {
-            <div class="sideBySide">
-                <h3>Plant @fc.PlantNumber</h3>
-                <table class="tableStyle">
-                    <thread>
-                        <!-- Labels THESE ARE MESSED UP-->
-                        <tr>
-                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().DateAndTime))</th>
-                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().AmbientTemp)</th>
-                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().ModuleTemp)</th>
-                            <th>@Html.DisplayNameFor(modelItem => Model.weatherReadings.First().Irridation)</th>
-                        </tr>
-                    </thread>
-                    <tbody>
-                        <!-- Information-->
-                        @foreach (var wr in Model.weatherReadings)
-                        {
-                            if (wr.PlantNumber == fc.PlantNumber)
-                            {
-                                <tr>
-                                    <th>
-                                        @Html.DisplayFor(modelItem => wr.DateAndTime)
-                                    </th>
-                                    <th>
-
-                                        @Html.DisplayFor(modelItem => wr.AmbientTemp)
-                                        @{aTempAvg += wr.AmbientTemp;}
-                                    </th>
-                                    <th>
-
-                                        @Html.DisplayFor(modelItem => wr.ModuleTemp)
-                                        @{mTempAvg += wr.ModuleTemp;}
-
-                                    </th>
-                                    <th>
-
-                                        @Html.DisplayFor(modelItem => wr.Irridation)
-                                        @{irridAvg += wr.Irridation;}
-                                    </th>
-                                </tr>
-                            }
-                        }
-                    </tbody>
-                    <tfoot>
-                        <!-- Footer-->
-                        <tr>
-                            <th>Averages</th>
-                            <th>
-                                @{aTempAvg /= 50.0;}
-                                @aTempAvg
-                            </th>
-                            <th>
-                                @{mTempAvg /= 50.0;}
-                                @mTempAvg
-                            </th>
-                            <th>
-                                @{irridAvg /= 50.0;}
-                                @irridAvg
-                            </th>
-                        </tr>
-                    </tfoot>
-                </table>
-            </div>
-        }
-    }
+    <h1>Select data below to create a graph</h1>
 </div>
 
 <div class="clear"><br /><br /></div>
 
 @{
-    <div id="formDiv">
-
-        <form method="post" action="">
-            Text String:<br />
-            <input type="date" id="formText" name="TestString" />
-            <input type="submit" value="Submit" />
-        </form>
-    </div>
-
-    if (Context.Request.Method == "POST")
+    //Switches the year around. Expects the format found C# American DateTime type
+    //ex: "05-15-2020" -> "2020-05-15"
+    string convertDate(string d1)
     {
-        <div class="clear">
-            @{
-                if (@ViewBag.form_data != null)
+        return d1.Substring(6) + "-" + d1.Substring(0, 5);
+    }
+
+}
+
+<div id="formDiv">
+    <form method="post" action="">
+        <label for="DateStart">Start Date</label>
+        <input type="date" name="startDate" value="@convertDate("05-15-2020")" />
+
+        <label for="DateEnd">End Date</label>
+        <input type="date" name="endDate" value="@convertDate("05-16-2020")" />
+
+        <label for="PlantNum">Plant</label>
+        <select id="PlantNum" name="plantNum">
+            <!--
+            <option value="4135001">4135001</option>
+            <option value="4136001">4136001</option>
+            -->
+            @{ 
+                foreach(var fc in Model.facilities)
                 {
-                    <p>
-                    Data was POST'd <br/>
-                    Output text: @ViewBag.form_data
-                    </p>
+                    <option value="@fc.PlantNumber">@fc.PlantNumber</option>
                 }
             }
+            <option value="All">All</option>
+        </select>
+        <br />
+
+        <div class="checkBoxContainer">
+            <label for="showWeather">Show Weather Readings</label>
+            <input type="checkbox" id="showWeatherReading" name="showWeather" onclick="checkboxValue('showWeatherReading')" />
         </div>
-    }
-}
+        <div class="checkBoxContainer">
+            <label for="showPower">Show Power Readings</label>
+            <input type="checkbox" id="showPowerReading" name="showPower" value="true" onclick="checkboxValue('showPowerReading')" />
+        </div>
+        <div class="checkBoxContainer">
+            <label for="showSource">Show Power Source</label>
+            <input type="checkbox" id="showPowerSource" name="showSource" value="true" onclick="checkboxValue('showPowerSource')" />
+        </div>
+        <br />
+        <input type="submit" value="Submit" />
+    </form>
+</div>
+
+<div class="clear"><br /></div>
+
+<!-- Main content Shown if post-->
+<div id="container1">
+    <p>Here's a graph when its a POST</p>
+    @if (Context.Request.Method == "POST")
+     {
+            <canvas id="graph">Your browser does not support the canvas element.</canvas>
+            <script>charts.regChart("graph");</script>
+     }
+</div>

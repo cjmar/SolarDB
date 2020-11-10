@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
@@ -12,6 +13,39 @@ using SolarDB.ViewModel;
 
 namespace SolarDB.Controllers
 {
+    public class SelectTarget
+    {
+        public DateTime dateStart { get; set; } //  Shows the first day by default
+        public DateTime dateEnd { get; set; }   //
+        public int plantNum { get; set; }       //  -1 means all. Shows "Plant_1" first
+        public string source { get; set; }      //  empty string means all
+        public bool showWeather { get; set; }   //  Show weather readings
+        public bool showPower { get; set; }     //  Show power readings
+        public bool showSource { get; set; }    //  Show power sources
+
+        public SelectTarget()
+        {
+            dateStart = DateTime.Parse("05-15-2020");
+            dateEnd = DateTime.Parse("05-16-2020");
+            plantNum = 4135001;
+            source = "";
+            showWeather = false;
+            showPower = false;
+            showSource = false;
+        }
+
+        public void printDebug() 
+        {
+            System.Diagnostics.Debug.WriteLine("dateStart: " + dateStart.ToString());
+            System.Diagnostics.Debug.WriteLine("dateEnd :" + dateEnd.ToString());
+            System.Diagnostics.Debug.WriteLine("plantNum: " + plantNum);
+            System.Diagnostics.Debug.WriteLine("source: " + source);
+            System.Diagnostics.Debug.WriteLine("showWeather: " + showWeather);
+            System.Diagnostics.Debug.WriteLine("showPower: " + showPower);
+            System.Diagnostics.Debug.WriteLine("showSource: " + showSource);
+        }
+    }
+
     public class SolarController : Controller
     {
         private readonly SolarContext _context;
@@ -24,214 +58,196 @@ namespace SolarDB.Controllers
         // GET: Solar
         public async Task<IActionResult> Info()
         {
-
-            var facList = await _context.Facilities.ToListAsync();
-
-            var wReadings1 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facList.ElementAt(0).PlantNumber)
-                                                            .OrderBy(d => d.DateAndTime)
-                                                            .Take(50)
-                                                            .ToListAsync();
-
-            var wReadings2 = await _context.WeatherReadings.Where(wr => wr.PlantNumber == facList.ElementAt(1).PlantNumber)
-                                                            .OrderBy(d => d.DateAndTime)
-                                                            .Take(50)
-                                                            .ToListAsync();
-
-            return View(new SolarViewModel()
+            //Get all Facilities for dropdown 
+            SelectTarget info = new SelectTarget
             {
-                weatherReadings = wReadings1.Concat(wReadings2),
-                facilities = facList
-            });
-            //return View(await readings.ToListAsync());
+                plantNum = -1,
+            };
+
+            SolarViewModel rtn = await SVMBuilder(info);
+
+            return View(rtn);
         }
 
 
-        // POST: Solar
+        // POST: Solar/Info
         [HttpPost, ActionName("Info")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> PostInfo()
         {
 
-            string formText = HttpContext.Request.Form["TestString"];
-
-            System.Diagnostics.Debug.WriteLine("Recieved form data text: " + formText);
-
-            //HttpContext.Request.Form["UserName"] + ". You are " + HttpContext.Request.Form["UserAge"];
-
-            if (!(formText == null))
+            SelectTarget tgt = new SelectTarget
             {
-                DateTime dt = DateTime.Parse(formText);
-                ViewBag.form_data = dt.ToString("dd/MM/yyyy HH:mm:ss");
-            }
-            else
-            {
-                ViewBag.form_data = "Form text was null";
-            }
-            
+                dateStart = DateTime.Parse(HttpContext.Request.Form["startDate"]),
+                dateEnd = DateTime.Parse(HttpContext.Request.Form["endDate"]),
+                plantNum = parsePlantNumber(HttpContext.Request.Form["plantNum"]),
+                showWeather = parseCheckBox(HttpContext.Request.Form["showWeather"]),
+                showPower = parseCheckBox(HttpContext.Request.Form["showPower"]),
+                showSource = parseCheckBox(HttpContext.Request.Form["showSource"]),
+            };
 
-            return View(new SolarViewModel());
+            tgt.printDebug();
+
+            //Create SelectInfo struct from form data
+            SolarViewModel rtn = await SVMBuilder(tgt);
+
+            return View(rtn);
         }
-
-        /*
-
-        // GET: Solar/Details/5
-        public async Task<IActionResult> Details(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var weatherReading = await _context.WeatherReadings
-                .FirstOrDefaultAsync(m => m.WeatherReadingID == id);
-            if (weatherReading == null)
-            {
-                return NotFound();
-            }
-
-            return View(weatherReading);
-        }
-
-        // GET: Solar/Create
-        public IActionResult Create()
-        {
-            return View();
-        }
-
-        // POST: Solar/Create
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for 
-        // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Create([Bind("WeatherReadingID,time,AmbientTemp,ModuleTemp,Irridation")] WeatherReading weatherReading)
-        {
-            if (ModelState.IsValid)
-            {
-                _context.Add(weatherReading);
-                await _context.SaveChangesAsync();
-                return RedirectToAction(nameof(Index));
-            }
-            return View(weatherReading);
-        }
-
-        // GET: Solar/Edit/5
-        public async Task<IActionResult> Edit(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var weatherReading = await _context.WeatherReadings.FindAsync(id);
-            if (weatherReading == null)
-            {
-                return NotFound();
-            }
-            return View(weatherReading);
-        }
-
-        // POST: Solar/Edit/5
-        // To protect from overposting attacks, enable the specific properties you want to bind to, for 
-        // more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-        [HttpPost]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, [Bind("WeatherReadingID,time,AmbientTemp,ModuleTemp,Irridation")] WeatherReading weatherReading)
-        {
-            if (id != weatherReading.WeatherReadingID)
-            {
-                return NotFound();
-            }
-
-            if (ModelState.IsValid)
-            {
-                try
-                {
-                    _context.Update(weatherReading);
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateConcurrencyException)
-                {
-                    if (!WeatherReadingExists(weatherReading.WeatherReadingID))
-                    {
-                        return NotFound();
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-                return RedirectToAction(nameof(Index));
-            }
-            return View(weatherReading);
-        }
-
-        // GET: Solar/Delete/5
-        public async Task<IActionResult> Delete(int? id)
-        {
-            if (id == null)
-            {
-                return NotFound();
-            }
-
-            var weatherReading = await _context.WeatherReadings
-                .FirstOrDefaultAsync(m => m.WeatherReadingID == id);
-            if (weatherReading == null)
-            {
-                return NotFound();
-            }
-
-            return View(weatherReading);
-        }
-
-        // POST: Solar/Delete/5
-        [HttpPost, ActionName("Delete")]
-        [ValidateAntiForgeryToken]
-        public async Task<IActionResult> DeleteConfirmed(int id)
-        {
-            var weatherReading = await _context.WeatherReadings.FindAsync(id);
-            _context.WeatherReadings.Remove(weatherReading);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        */
-
 
         /*  Creates a SolarViewModel from database
          * 
-         *  Expects parameters used to select tables
-         *  Null values resort to default parmeters
-         *  
-         *    Param         ||  Default value
-         *  Shared:
-         *      Date start      Earliest date in records
-         *      Date finish     Latest date in records
-         *      PlantNumber     First plant in record (not both)
-         *  
-         *  PowerArray:
-         *      SourceKey
-         *      Facility
+         *  Expects parameters used to select database entries
+         *
          *      
-         *  PowerReading:
-         *      ArrayKey
-         *      DC
-         *      AC
-         *      Daily
-         *      Total
-         *      
-         *  WeatherReading:
-         *      Facility
-         *      Ambient
-         *      Module
-         *      Irridation
-         *      
+         * Returns a SolarViewModel filled with data based on SelectTarget parameters
          */
-
-        private SolarViewModel SVMBuilder()
+        private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
         {
+            //SVM default values are empty List<T>
             SolarViewModel rtn = new SolarViewModel();
 
+            //  Populate facilities and sources
+            //  -1 means get all facilities
+            if (info.plantNum != -1)
+            {
+                rtn.facilities = await _context.Facilities.Where(f => f.PlantNumber == info.plantNum)
+                                                            .OrderBy(f => f.PlantNumber)
+                                                            .ToListAsync();
+            }
+            else //Get all
+            {
+                rtn.facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
+                                                            .ToListAsync();
+            }
+
+            //TODO: These three methods make three seperate accesses to the database and need to probably be one query
+
+            //Populate PowerSources
+            if(info.showSource)
+            {
+                rtn.powerSources = await PopulatePowerSources(info);
+            }
+
+            //Populate WeatherReadings
+            if(info.showWeather)
+            {
+                rtn.weatherReadings = await PopulateWeatherReadings(info);
+            }
+
+            //Populate PowerReadings
+            if(info.showPower)
+            {
+                rtn.powerReadings = await PopulatePowerReadings(info);
+            }
+
+            System.Diagnostics.Debug.WriteLine("Facility count: " + rtn.facilities.Count());
+            System.Diagnostics.Debug.WriteLine("Weather reading count: " + rtn.weatherReadings.Count());
+            System.Diagnostics.Debug.WriteLine("Power Sources count: " + rtn.powerSources.Count());
+            System.Diagnostics.Debug.WriteLine("Power readings count: " + rtn.powerReadings.Count());
+
             return rtn;
+        }
+
+        /*  Returns a Task<List<PowerReading>> based on DateTime, Plant number (or all), and power source
+         *              within a date period
+         * 
+         */
+        private async Task<List<PowerReading>> PopulatePowerReadings(SelectTarget info)
+        {
+            //Empty string means get all sources
+            if (info.source.Equals(""))
+            {
+                if (info.plantNum == -1)    //ALL power readings from ALL facilities
+                {
+                    return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
+                                                            .OrderBy(pr => pr.DateAndTime)
+                                                            .ToListAsync();
+                }
+                else                        //power readings from a specific facility
+                {
+                    //Join PowerSource and PowerReading where (PS.SourceKey == PR.SourceKey) from there take PR where DateTime is within bounds
+                    return await (from reading in _context.PowerReadings
+                                  join source in _context.PowerSources on reading.SourceKey equals source.SourceKey
+                                  where (source.PlantNumber == info.plantNum)
+                                  select reading)
+                                  .Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
+                                  .OrderBy(pr => pr.DateAndTime)
+                                  .ToListAsync();
+                }
+            }
+            else // Get readings from a specific source
+            {
+                return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
+                                                        .Where(pr => pr.SourceKey.Equals(info.source))
+                                                        .OrderBy(pr => pr.DateAndTime)
+                                                        .ToListAsync();
+            }
+        }
+
+        /*  Returns a Task<List<WeatherReading>> based on DateTime and Plant number (or all)
+         *              within a date period
+         * 
+         */
+        private async Task<List<WeatherReading>> PopulateWeatherReadings(SelectTarget info)
+        {
+            //All WeatherReadings
+            if(info.plantNum == -1)
+            {
+                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
+                                                        .OrderBy(wr => wr.DateAndTime)
+                                                        .ToListAsync();
+            }
+            else  //Plant Specific Readings
+            {
+                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
+                                                     .Where(wr => wr.PlantNumber == info.plantNum)
+                                                         .OrderBy(wr => wr.DateAndTime)
+                                                         .ToListAsync();
+            }
+        }
+
+        /*
+         * 
+         * 
+         */
+        private async Task<List<PowerSource>> PopulatePowerSources(SelectTarget info)
+        {
+            //Empty string means get all sources
+            if (info.showSource.Equals(""))
+            {
+                if (info.plantNum != -1)    //ALL power sources from ALL facilities
+                {
+                    return await _context.PowerSources.ToListAsync();
+                }
+                else                        //ALL power sources from a specific facility
+                {
+                    return await _context.PowerSources.Where(ps => ps.PlantNumber.Equals(info.plantNum))
+                                                        .ToListAsync();
+                }
+            }
+            else // Get specific source
+            {
+                return await _context.PowerSources.Where(ps => ps.SourceKey.Equals(info.source))
+                                                        .ToListAsync();
+            }
+        }
+
+        private bool parseCheckBox(string s)
+        {
+            if (s != null && s.Equals("true"))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        private int parsePlantNumber(string s)
+        {
+            if (!int.TryParse(s, out _))    //If s cannot be parsed into an int, return -1
+            {
+                return -1;
+            }
+            return int.Parse(s);
         }
 
         private bool WeatherReadingExists(int id)

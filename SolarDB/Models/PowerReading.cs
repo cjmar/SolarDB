@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SolarDB.Models
 {
@@ -11,6 +12,7 @@ namespace SolarDB.Models
         public int PowerReadingID { get; set; }
 
         [Display(Name = "Power Array")]
+        
         public string SourceKey { get; set; }
         public DateTime DateAndTime { get; set; }
 

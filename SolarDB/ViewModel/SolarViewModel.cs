@@ -6,6 +6,12 @@ using System.Threading.Tasks;
 
 namespace SolarDB.ViewModel
 {
+    public class SolarViewPoint
+    {
+
+        public double value { get; set; }    
+    }
+
     public class SolarViewModel
     {
         public IEnumerable<WeatherReading> weatherReadings { get; set; }
