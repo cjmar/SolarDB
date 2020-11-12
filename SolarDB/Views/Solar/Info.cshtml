@@ -4,7 +4,6 @@
     var facilities = @Html.Raw(Json.Serialize(@Model.facilities));
     var weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
     var power = @Html.Raw(Json.Serialize(@Model.powerReadings));
-    var source = @Html.Raw(Json.Serialize(@Model.powerSources));
 </script>
 
 @{
@@ -18,23 +17,26 @@
         height: 100%;
     }
 
+    #chartContainer {
+        height: 100%;
+        float: left;
+    }
+
     #formDiv {
         border: solid 1px black;
-        float:left;
-        padding:2px;
+        float: left;
+        padding: 2px;
     }
 
-    .checkBoxContainer
-    {
-        border:solid black 1px;
-        float:left;
-        padding:2px;
-        margin:1px;
+    .checkBoxContainer {
+        border: solid black 1px;
+        float: left;
+        padding: 2px;
+        margin: 1px;
     }
 
-    .checkBoxList
-    {
-        display:none;
+    .checkBoxList {
+        display: none;
     }
 
     .sideBySide {
@@ -46,7 +48,7 @@
 
     .tableStyle {
         border: 1px solid black;
-        padding:1px;
+        padding: 1px;
     }
 
     th {
@@ -62,13 +64,9 @@
         clear: both;
     }
 
-    canvas
-    {
-        width:650px;
-        height:500px;
-        border:solid 1px black;
+    canvas {
+        border: solid 1px black;
     }
-
 </style>
 
 <!-- ###########################################
@@ -106,8 +104,8 @@
             <option value="4135001">4135001</option>
             <option value="4136001">4136001</option>
             -->
-            @{ 
-                foreach(var fc in Model.facilities)
+            @{
+                foreach (var fc in Model.facilities)
                 {
                     <option value="@fc.PlantNumber">@fc.PlantNumber</option>
                 }
@@ -136,11 +134,16 @@
 <div class="clear"><br /></div>
 
 <!-- Main content Shown if post-->
-<div id="container1">
-    <p>Here's a graph when its a POST</p>
-    @if (Context.Request.Method == "POST")
-     {
-            <canvas id="graph">Your browser does not support the canvas element.</canvas>
-            <script>charts.regChart("graph");</script>
-     }
-</div>
+@if (Context.Request.Method == "POST")
+{
+    <hr />
+    <div id="chartContainer">
+        <canvas id="graph" width="750" height="500">Your browser does not support the canvas element.</canvas>
+        <script>charts.init("graph");</script>
+    </div>
+    <div style="float:left;">
+        <div style="width:100%;height:20%;background-color:blue;">words</div>
+        <div class="clear"></div>
+        <div style="width:50%;height:80%;background-color:red;">yes</div>
+    </div>
+}

@@ -5,6 +5,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Internal;
 using SolarDB.Data;
@@ -69,7 +70,6 @@ namespace SolarDB.Controllers
             return View(rtn);
         }
 
-
         // POST: Solar/Info
         [HttpPost, ActionName("Info")]
         [ValidateAntiForgeryToken]
@@ -99,34 +99,19 @@ namespace SolarDB.Controllers
          *  Expects parameters used to select database entries
          *
          *      
-         * Returns a SolarViewModel filled with data based on SelectTarget parameters
+         *  Returns a SolarViewModel filled with data based on SelectTarget parameters
          */
         private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
         {
-            //SVM default values are empty List<T>
-            SolarViewModel rtn = new SolarViewModel();
-
-            //  Populate facilities and sources
-            //  -1 means get all facilities
-            if (info.plantNum != -1)
+            //SVM default values are empty List<T>. All facilities are grabbed for future proofed GUI reasons that will never be implemented
+            SolarViewModel rtn = new SolarViewModel
             {
-                rtn.facilities = await _context.Facilities.Where(f => f.PlantNumber == info.plantNum)
-                                                            .OrderBy(f => f.PlantNumber)
-                                                            .ToListAsync();
-            }
-            else //Get all
-            {
-                rtn.facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
-                                                            .ToListAsync();
-            }
-
+                facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
+                                                        .Select(f => new SVMFacility(f))
+                                                        .ToListAsync()
+            };
             //TODO: These three methods make three seperate accesses to the database and need to probably be one query
-
-            //Populate PowerSources
-            if(info.showSource)
-            {
-                rtn.powerSources = await PopulatePowerSources(info);
-            }
+            //              execution is deferred until the ToList() when dealing with an IQueryable
 
             //Populate WeatherReadings
             if(info.showWeather)
@@ -142,7 +127,6 @@ namespace SolarDB.Controllers
 
             System.Diagnostics.Debug.WriteLine("Facility count: " + rtn.facilities.Count());
             System.Diagnostics.Debug.WriteLine("Weather reading count: " + rtn.weatherReadings.Count());
-            System.Diagnostics.Debug.WriteLine("Power Sources count: " + rtn.powerSources.Count());
             System.Diagnostics.Debug.WriteLine("Power readings count: " + rtn.powerReadings.Count());
 
             return rtn;
@@ -152,7 +136,7 @@ namespace SolarDB.Controllers
          *              within a date period
          * 
          */
-        private async Task<List<PowerReading>> PopulatePowerReadings(SelectTarget info)
+        private async Task<List<SVMPower>> PopulatePowerReadings(SelectTarget info)
         {
             //Empty string means get all sources
             if (info.source.Equals(""))
@@ -161,6 +145,7 @@ namespace SolarDB.Controllers
                 {
                     return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
                                                             .OrderBy(pr => pr.DateAndTime)
+                                                            .Select(pr => new SVMPower(pr))
                                                             .ToListAsync();
                 }
                 else                        //power readings from a specific facility
@@ -172,6 +157,7 @@ namespace SolarDB.Controllers
                                   select reading)
                                   .Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
                                   .OrderBy(pr => pr.DateAndTime)
+                                  .Select(pr => new SVMPower(pr))
                                   .ToListAsync();
                 }
             }
@@ -180,21 +166,23 @@ namespace SolarDB.Controllers
                 return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
                                                         .Where(pr => pr.SourceKey.Equals(info.source))
                                                         .OrderBy(pr => pr.DateAndTime)
+                                                        .Select(pr => new SVMPower(pr))
                                                         .ToListAsync();
             }
         }
-
+        
         /*  Returns a Task<List<WeatherReading>> based on DateTime and Plant number (or all)
          *              within a date period
          * 
          */
-        private async Task<List<WeatherReading>> PopulateWeatherReadings(SelectTarget info)
+        private async Task<List<SVMWeather>> PopulateWeatherReadings(SelectTarget info)
         {
             //All WeatherReadings
-            if(info.plantNum == -1)
+            if (info.plantNum == -1)
             {
                 return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
                                                         .OrderBy(wr => wr.DateAndTime)
+                                                        .Select(wr => new SVMWeather(wr))
                                                         .ToListAsync();
             }
             else  //Plant Specific Readings
@@ -202,6 +190,7 @@ namespace SolarDB.Controllers
                 return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
                                                      .Where(wr => wr.PlantNumber == info.plantNum)
                                                          .OrderBy(wr => wr.DateAndTime)
+                                                         .Select(wr => new SVMWeather(wr))
                                                          .ToListAsync();
             }
         }
