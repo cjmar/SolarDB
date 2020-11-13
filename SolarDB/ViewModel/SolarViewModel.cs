@@ -64,16 +64,22 @@ namespace SolarDB.ViewModel
 
     public class SolarViewModel
     {
+        //Using these dates are used to remember GUI selections
+        public DateTime dateStart { get; set; }
+        public DateTime dateEnd { get; set; } 
+
         public IEnumerable<SVMWeather> weatherReadings { get; set; }
         public IEnumerable<SVMPower> powerReadings { get; set; }
         public IEnumerable<SVMFacility> facilities { get; set; }
 
-        /*  Constructor so there are no null values passed to View
+        /*  Constructor so there are no null Lists passed to View
          * 
          * 
          */
         public SolarViewModel()
         {
+            dateStart = DateTime.Parse("05-15-2020 00:00"); //By default set to the first days worth of data
+            dateEnd = DateTime.Parse("05-16-2020 00:00");
             weatherReadings = new List<SVMWeather>();
             powerReadings = new List<SVMPower>();
             facilities = new List<SVMFacility>();

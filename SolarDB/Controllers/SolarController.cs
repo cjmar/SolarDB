@@ -103,9 +103,12 @@ namespace SolarDB.Controllers
          */
         private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
         {
-            //SVM default values are empty List<T>. All facilities are grabbed for future proofed GUI reasons that will never be implemented
+            //SVM default values are empty List<T>. All facilities and dates are grabbed for GUI
             SolarViewModel rtn = new SolarViewModel
             {
+                dateStart = info.dateStart,
+                dateEnd = info.dateEnd,
+
                 facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
                                                         .Select(f => new SVMFacility(f))
                                                         .ToListAsync()

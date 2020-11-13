@@ -7,7 +7,7 @@
 </script>
 
 @{
-    ViewData["Title"] = "Readings";
+    ViewData["Title"] = "Graphing";
 }
 
 <style>
@@ -33,6 +33,7 @@
         float: left;
         padding: 2px;
         margin: 1px;
+        margin-bottom:3px;
     }
 
     .checkBoxList {
@@ -75,35 +76,30 @@
      ########################################### -->
 
 <div id="container1">
-    <h1>Select data below to create a graph</h1>
+    <h1>Select which data to use</h1>
 </div>
 
 <div class="clear"><br /><br /></div>
 
-@{
-    //Switches the year around. Expects the format found C# American DateTime type
-    //ex: "05-15-2020" -> "2020-05-15"
-    string convertDate(string d1)
-    {
-        return d1.Substring(6) + "-" + d1.Substring(0, 5);
-    }
-
-}
-
 <div id="formDiv">
     <form method="post" action="">
         <label for="DateStart">Start Date</label>
-        <input type="date" name="startDate" value="@convertDate("05-15-2020")" />
+        <input type="date" name="startDate" value="@Model.dateStart.ToString("yyyy-MM-dd")" />
 
         <label for="DateEnd">End Date</label>
-        <input type="date" name="endDate" value="@convertDate("05-16-2020")" />
-
+        <input type="date" name="endDate" value="@Model.dateEnd.Date.ToString("yyyy-MM-dd")" />
+        <br />
+        <div class="checkBoxContainer">
+            <label for="showWeather">Load Weather Readings</label>
+            <input type="checkbox" id="showWeatherReading" name="showWeather" onclick="checkboxValue('showWeatherReading')" />
+        </div>
+        <div class="checkBoxContainer" style="float:right;">
+            <label for="showPower">Load Power Readings</label>
+            <input type="checkbox" id="showPowerReading" name="showPower" value="true" onclick="checkboxValue('showPowerReading')" />
+        </div>
+        <div class="clear"></div>
         <label for="PlantNum">Plant</label>
         <select id="PlantNum" name="plantNum">
-            <!--
-            <option value="4135001">4135001</option>
-            <option value="4136001">4136001</option>
-            -->
             @{
                 foreach (var fc in Model.facilities)
                 {
@@ -112,22 +108,7 @@
             }
             <option value="All">All</option>
         </select>
-        <br />
-
-        <div class="checkBoxContainer">
-            <label for="showWeather">Show Weather Readings</label>
-            <input type="checkbox" id="showWeatherReading" name="showWeather" onclick="checkboxValue('showWeatherReading')" />
-        </div>
-        <div class="checkBoxContainer">
-            <label for="showPower">Show Power Readings</label>
-            <input type="checkbox" id="showPowerReading" name="showPower" value="true" onclick="checkboxValue('showPowerReading')" />
-        </div>
-        <div class="checkBoxContainer">
-            <label for="showSource">Show Power Source</label>
-            <input type="checkbox" id="showPowerSource" name="showSource" value="true" onclick="checkboxValue('showPowerSource')" />
-        </div>
-        <br />
-        <input type="submit" value="Submit" />
+        <input type="submit" style="float:right;" value="Submit" />
     </form>
 </div>
 
