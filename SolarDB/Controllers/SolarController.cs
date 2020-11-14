@@ -146,7 +146,7 @@ namespace SolarDB.Controllers
             {
                 if (info.plantNum == -1)    //ALL power readings from ALL facilities
                 {
-                    return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
+                    return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime < info.dateEnd)
                                                             .OrderBy(pr => pr.DateAndTime)
                                                             .Select(pr => new SVMPower(pr))
                                                             .ToListAsync();
@@ -183,14 +183,14 @@ namespace SolarDB.Controllers
             //All WeatherReadings
             if (info.plantNum == -1)
             {
-                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
+                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime < info.dateEnd)
                                                         .OrderBy(wr => wr.DateAndTime)
                                                         .Select(wr => new SVMWeather(wr))
                                                         .ToListAsync();
             }
             else  //Plant Specific Readings
             {
-                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime <= info.dateEnd)
+                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime < info.dateEnd)
                                                      .Where(wr => wr.PlantNumber == info.plantNum)
                                                          .OrderBy(wr => wr.DateAndTime)
                                                          .Select(wr => new SVMWeather(wr))
