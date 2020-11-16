@@ -62,7 +62,7 @@ namespace SolarDB.Migrations
                     DateAndTime = table.Column<DateTime>(nullable: false),
                     AmbientTemp = table.Column<double>(nullable: false),
                     ModuleTemp = table.Column<double>(nullable: false),
-                    Irridation = table.Column<double>(nullable: false)
+                    Irradiation = table.Column<double>(nullable: false)
                 },
                 constraints: table =>
                 {

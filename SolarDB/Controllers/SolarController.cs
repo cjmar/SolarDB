@@ -19,31 +19,25 @@ namespace SolarDB.Controllers
         public DateTime dateStart { get; set; } //  Shows the first day by default
         public DateTime dateEnd { get; set; }   //
         public int plantNum { get; set; }       //  -1 means all. Shows "Plant_1" first
-        public string source { get; set; }      //  empty string means all
         public bool showWeather { get; set; }   //  Show weather readings
         public bool showPower { get; set; }     //  Show power readings
-        public bool showSource { get; set; }    //  Show power sources
 
         public SelectTarget()
         {
             dateStart = DateTime.Parse("05-15-2020");
             dateEnd = DateTime.Parse("05-16-2020");
             plantNum = 4135001;
-            source = "";
             showWeather = false;
             showPower = false;
-            showSource = false;
         }
 
-        public void printDebug() 
+        public void printDebug()
         {
             System.Diagnostics.Debug.WriteLine("dateStart: " + dateStart.ToString());
-            System.Diagnostics.Debug.WriteLine("dateEnd :" + dateEnd.ToString());
+            System.Diagnostics.Debug.WriteLine("dateEnd: " + dateEnd.ToString());
             System.Diagnostics.Debug.WriteLine("plantNum: " + plantNum);
-            System.Diagnostics.Debug.WriteLine("source: " + source);
             System.Diagnostics.Debug.WriteLine("showWeather: " + showWeather);
             System.Diagnostics.Debug.WriteLine("showPower: " + showPower);
-            System.Diagnostics.Debug.WriteLine("showSource: " + showSource);
         }
     }
 
@@ -83,7 +77,6 @@ namespace SolarDB.Controllers
                 plantNum = parsePlantNumber(HttpContext.Request.Form["plantNum"]),
                 showWeather = parseCheckBox(HttpContext.Request.Form["showWeather"]),
                 showPower = parseCheckBox(HttpContext.Request.Form["showPower"]),
-                showSource = parseCheckBox(HttpContext.Request.Form["showSource"]),
             };
 
             tgt.printDebug();
@@ -103,7 +96,7 @@ namespace SolarDB.Controllers
          */
         private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
         {
-            //SVM default values are empty List<T>. All facilities and dates are grabbed for GUI
+            //SVM default values are empty List<T>. Dates and all facilities are grabbed for GUI
             SolarViewModel rtn = new SolarViewModel
             {
                 dateStart = info.dateStart,
@@ -117,20 +110,22 @@ namespace SolarDB.Controllers
             //              execution is deferred until the ToList() when dealing with an IQueryable
 
             //Populate WeatherReadings
-            if(info.showWeather)
+            if (info.showWeather)
             {
                 rtn.weatherReadings = await PopulateWeatherReadings(info);
             }
 
-            //Populate PowerReadings
-            if(info.showPower)
+            //Populate PowerReadings and sources
+            if (info.showPower)
             {
                 rtn.powerReadings = await PopulatePowerReadings(info);
+                rtn.powerSources = await PopulatePowerSources(info);
             }
 
-            System.Diagnostics.Debug.WriteLine("Facility count: " + rtn.facilities.Count());
-            System.Diagnostics.Debug.WriteLine("Weather reading count: " + rtn.weatherReadings.Count());
-            System.Diagnostics.Debug.WriteLine("Power readings count: " + rtn.powerReadings.Count());
+            System.Diagnostics.Debug.WriteLine("Facility count: " + rtn.facilities.Count() + " selected " + info.plantNum);
+            System.Diagnostics.Debug.WriteLine("Weather reading count: " + rtn.weatherReadings.Count() + " show " + info.showWeather);
+            System.Diagnostics.Debug.WriteLine("Power readings count: " + rtn.powerReadings.Count() + " show " + info.showPower);
+            System.Diagnostics.Debug.WriteLine("Power Sources count: " + rtn.powerSources.Count());
 
             return rtn;
         }
@@ -142,38 +137,27 @@ namespace SolarDB.Controllers
         private async Task<List<SVMPower>> PopulatePowerReadings(SelectTarget info)
         {
             //Empty string means get all sources
-            if (info.source.Equals(""))
+            if (info.plantNum == -1)    //ALL power readings from ALL facilities
             {
-                if (info.plantNum == -1)    //ALL power readings from ALL facilities
-                {
-                    return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime < info.dateEnd)
-                                                            .OrderBy(pr => pr.DateAndTime)
-                                                            .Select(pr => new SVMPower(pr))
-                                                            .ToListAsync();
-                }
-                else                        //power readings from a specific facility
-                {
-                    //Join PowerSource and PowerReading where (PS.SourceKey == PR.SourceKey) from there take PR where DateTime is within bounds
-                    return await (from reading in _context.PowerReadings
-                                  join source in _context.PowerSources on reading.SourceKey equals source.SourceKey
-                                  where (source.PlantNumber == info.plantNum)
-                                  select reading)
-                                  .Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
-                                  .OrderBy(pr => pr.DateAndTime)
-                                  .Select(pr => new SVMPower(pr))
-                                  .ToListAsync();
-                }
-            }
-            else // Get readings from a specific source
-            {
-                return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
-                                                        .Where(pr => pr.SourceKey.Equals(info.source))
+                return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime < info.dateEnd)
                                                         .OrderBy(pr => pr.DateAndTime)
                                                         .Select(pr => new SVMPower(pr))
                                                         .ToListAsync();
             }
+            else                        //power readings from a specific facility
+            {
+                //Join PowerSource and PowerReading where (PS.SourceKey == PR.SourceKey) from there take PR where DateTime is within bounds
+                return await (from reading in _context.PowerReadings
+                                join source in _context.PowerSources on reading.SourceKey equals source.SourceKey
+                                where (source.PlantNumber == info.plantNum)
+                                select reading)
+                                .Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime <= info.dateEnd)
+                                .OrderBy(pr => pr.DateAndTime)
+                                .Select(pr => new SVMPower(pr))
+                                .ToListAsync();
+            }   
         }
-        
+
         /*  Returns a Task<List<WeatherReading>> based on DateTime and Plant number (or all)
          *              within a date period
          * 
@@ -202,25 +186,22 @@ namespace SolarDB.Controllers
          * 
          * 
          */
-        private async Task<List<PowerSource>> PopulatePowerSources(SelectTarget info)
+        private async Task<List<SVMPowerSource>> PopulatePowerSources(SelectTarget info)
         {
             //Empty string means get all sources
-            if (info.showSource.Equals(""))
+
+            if (info.plantNum != -1)    //ALL power sources from ALL facilities
             {
-                if (info.plantNum != -1)    //ALL power sources from ALL facilities
-                {
-                    return await _context.PowerSources.ToListAsync();
-                }
-                else                        //ALL power sources from a specific facility
-                {
-                    return await _context.PowerSources.Where(ps => ps.PlantNumber.Equals(info.plantNum))
-                                                        .ToListAsync();
-                }
+                return await _context.PowerSources
+                                .OrderBy(ps => ps.PlantNumber)
+                                .Select(ps => new SVMPowerSource(ps))
+                                .ToListAsync();
             }
-            else // Get specific source
+            else                        //ALL power sources from a specific facility
             {
-                return await _context.PowerSources.Where(ps => ps.SourceKey.Equals(info.source))
-                                                        .ToListAsync();
+                return await _context.PowerSources.Where(ps => ps.PlantNumber.Equals(info.plantNum))
+                                                    .Select(ps => new SVMPowerSource(ps))
+                                                    .ToListAsync();
             }
         }
 

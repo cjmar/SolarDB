@@ -95,7 +95,7 @@ namespace SolarDB.Migrations
                     b.Property<DateTime>("DateAndTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<double>("Irridation")
+                    b.Property<double>("Irradiation")
                         .HasColumnType("float");
 
                     b.Property<double>("ModuleTemp")

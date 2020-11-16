@@ -19,7 +19,7 @@ namespace SolarDB.ViewModel
         public DateTime DateAndTime { get; set; }
         public double AmbientTemp { get; set; }     //C
         public double ModuleTemp { get; set; }      //C
-        public double Irridation { get; set; }      //Best guess: Solar radiation sensor. Measures power of light and heat from sun
+        public double Irradiation { get; set; }     //Measures power of light and heat from sun
 
         public SVMWeather(WeatherReading wr)
         {
@@ -27,7 +27,7 @@ namespace SolarDB.ViewModel
             DateAndTime = wr.DateAndTime;
             AmbientTemp = wr.AmbientTemp;
             ModuleTemp = wr.ModuleTemp;
-            Irridation = wr.Irridation;
+            Irradiation = wr.Irradiation;
         }
     }
 
@@ -52,6 +52,19 @@ namespace SolarDB.ViewModel
         }
     }
 
+    public class SVMPowerSource
+    {
+        public string SourceKey { get; set; }
+        public int PlantNumber { get; set; }
+
+        public SVMPowerSource(PowerSource ps)
+        {
+            SourceKey = ps.SourceKey;
+            PlantNumber = ps.PlantNumber;
+        }
+    }
+
+
     public class SVMFacility
     {
         public int PlantNumber { get; set; }
@@ -70,6 +83,7 @@ namespace SolarDB.ViewModel
 
         public IEnumerable<SVMWeather> weatherReadings { get; set; }
         public IEnumerable<SVMPower> powerReadings { get; set; }
+        public IEnumerable<SVMPowerSource> powerSources { get; set; }
         public IEnumerable<SVMFacility> facilities { get; set; }
 
         /*  Constructor so there are no null Lists passed to View
@@ -82,6 +96,7 @@ namespace SolarDB.ViewModel
             dateEnd = DateTime.Parse("05-16-2020 00:00");
             weatherReadings = new List<SVMWeather>();
             powerReadings = new List<SVMPower>();
+            powerSources = new List<SVMPowerSource>();
             facilities = new List<SVMFacility>();
         }
     }

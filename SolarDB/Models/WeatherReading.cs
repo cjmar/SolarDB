@@ -20,7 +20,7 @@ namespace SolarDB.Models
         public double AmbientTemp { get; set; }     //C
         [Display(Name = "Module Temperature")]
         public double ModuleTemp { get; set; }      //C
-        [Display(Name = "Irridation")]
-        public double Irridation { get; set; }      //Best guess: Solar radiation sensor. Measures power of light and heat from sun
+        [Display(Name = "Irradiation")]
+        public double Irradiation { get; set; }      //Measures power of light and heat from sun
     }
 }

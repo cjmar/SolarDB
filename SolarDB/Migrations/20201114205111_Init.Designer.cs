@@ -10,7 +10,7 @@ using SolarDB.Data;
 namespace SolarDB.Migrations
 {
     [DbContext(typeof(SolarContext))]
-    [Migration("20201102201754_Init")]
+    [Migration("20201114205111_Init")]
     partial class Init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -97,7 +97,7 @@ namespace SolarDB.Migrations
                     b.Property<DateTime>("DateAndTime")
                         .HasColumnType("datetime2");
 
-                    b.Property<double>("Irridation")
+                    b.Property<double>("Irradiation")
                         .HasColumnType("float");
 
                     b.Property<double>("ModuleTemp")

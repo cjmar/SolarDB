@@ -35,7 +35,6 @@ const charts = (() =>
         context.font = "15px Arial";
         context.lineWidth = 1;
 
-
         //Prefer weather readings for x axis labels. 
         if (weather && weather.length > 0) {
             regChart("weather");
@@ -43,10 +42,12 @@ const charts = (() =>
         } 
         else if (power && power.length > 0)
         {
-            regChart("power");
             let powerArrayNum = 22;
             populateXlabel(power, powerArrayNum);
         }
+        if (power && power.length > 0) 
+            regChart("power");
+        
         update();
     }
 
@@ -65,7 +66,7 @@ const charts = (() =>
     const update = () =>
     {
         renderAxis();
-        //if (getChart("power") !== undefined) { getChart("power").plotPower() }
+        if (getChart("power")) { getChart("power").plotPower() }
         if (getChart("weather")) { getChart("weather").plotWeather(); }
     }
 
@@ -111,7 +112,7 @@ const charts = (() =>
         //Not every 15 minute interval is accounted for in each day
         let y = canvas.clientHeight;
 
-        if (xLabels.length == 0) { xLabels.push("No Date") }
+        if (xLabels.length == 0) { xLabels.push("No Data") }
         let xStep = (canvas.clientWidth - offSet) / (xLabels.length);
         if (dayCount > daySwitchNum) { dayCount = 1; }
 
@@ -139,7 +140,14 @@ const charts = (() =>
     return {init, getChart, update};
 })();
 
-//Javascript factory for a graph
+//Javascript namespace that packages up the JSON into a datastructure
+const allData = () =>
+    ({
+        
+
+    });
+
+//Factory for a graph
 //Allows multiple graphs to be drawn to a single canvas 
 const chart = (chartName) =>
 {
@@ -165,46 +173,106 @@ const chart = (chartName) =>
         chartW = canvas.clientWidth - offSet;
         chartH = canvas.clientHeight - offSet;
     }
-    //Custom y axis for the data points
-    const renderAxis = () =>
-    {
-        context.strokeStyle = "#000000";
-        context.lineWidth = 1;
-        context.moveTo(offSet, offSet);
-        context.lineTo(offSet, chartH);
-        context.lineTo(chartW + offSet, chartH);
-        context.stroke();
-        context.closePath();
-    }
 
     //Draw power data
     const plotPower = () =>
     {
+        xScale = chartW / power.length;
 
+       
     }
 
     //Draws weather data
     const plotWeather = () =>
     {
-        let irriPoint = [[0, 0], [0, 0], "#ffff00"];
+        xScale = chartW / weather.length;
+
+        //Split the data points into seperate facilities
+        let fac = [];
+        for (i = 0; i < facilities.length; i++) //facilities length is by default always 2 for gui
+        {
+            let plant = facilities[i]["plantNumber"];
+            let ap = [[xScale + offSet + 4, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale , plantNum}
+            let mp = [[xScale + offSet + 4, 0], [0, 0], "#ffa500", -1]; //#ffa500
+            let rp = [[xScale + offSet + 4, 0], [0, 0], "#999900", -1];
+
+            let f = [ap, mp, rp, plant];
+            fac.push(f);
+        }
+        
+        let ambPoint = [[xScale + offSet + 4, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale }
+        let modPoint = [[xScale + offSet + 4, 0], [0, 0], "#ffa500", -1]; //#ffa500
+        let radPoint = [[xScale + offSet + 4, 0], [0, 0], "#999900", -1];
+
+        let maxAmb = ambPoint[3];
+        let maxMod = modPoint[3];
+        let maxRad = radPoint[3];
+
+        let facNum = 0;
+        //"ambientTemp" ,"moduleTemp", "irradiation"
+        //Find the max values for each point type
+        for (i = 0; i < weather.length; i++)                    //Linear scan to get setup data. y scaling
+        {
+            ambPoint[3] = (ambPoint[3] > weather[i]["ambientTemp"]) ? ambPoint[3] : weather[i]["ambientTemp"];
+            modPoint[3] = (modPoint[3] > weather[i]["moduleTemp"]) ? modPoint[3] : weather[i]["moduleTemp"];
+            radPoint[3] = (radPoint[3] > weather[i]["irradiation"]) ? radPoint[3] : weather[i]["irradiation"];
+
+            maxAmb = ambPoint[3];
+            maxMod = modPoint[3];
+            maxRad = radPoint[3];
+
+            //for (i = 0; i < facilities.length; i++)
+            //{
+             //   if (weather[i]["plantNumber"] == fac[i][3]) {
+              //      console.log("Matching plant");
+               // }
+            //}
+        }
+        //FACILITY SET Y SCALE
+        for (i = 0; i < facilities.length; i++) {
+            fac[i][0][3] = chartH / maxAmb / 2;
+            fac[i][1][3] = chartH / maxMod / 2;
+            fac[i][2][3] = chartH / maxRad / 3;
+        }
+
+
+        ambPoint[3] = chartH / ambPoint[3] / 2; //These set the max Y values a datapoint can be
+        modPoint[3] = chartH / modPoint[3] / 2;
+        radPoint[3] = chartH / radPoint[3] / 3;
+
+        //Set first values
+        ambPoint[0][1] = chartH - (weather[0]["ambientTemp"] * ambPoint[3]);
+        modPoint[0][1] = chartH - (weather[0]["moduleTemp"] * modPoint[3]);
+        radPoint[0][1] = chartH - (weather[0]["irradiation"] * radPoint[3]);
 
         for (i = 0; i < weather.length; i++)
         {
-            //let p = {[0, 0], [10, 10]};
-            //plotPoint(irriColor, irriPoint);
+            setPoint(ambPoint, i, weather[i]["ambientTemp"]);
+            plotPoint(ambPoint);
+
+            setPoint(modPoint, i, weather[i]["moduleTemp"]);
+            plotPoint(modPoint);
+
+            setPoint(radPoint, i, weather[i]["irradiation"]);
+            plotPoint(radPoint);
         }
     }
 
-    /*
-    const plotPoint = (color, points) =>
+    const setPoint = (p, i, value) =>
     {
-        //context.beginPath();
-        //context.moveTo(points[0][0], points[0][1]);
-        //context.strokeStyle = color;
-        //context.lineTo(points[1][0], points[1][1]);
-        //context.stroke();
+        p[1] = p[0];
+        p[0] = [i * xScale + offSet + 4, chartH - value * p[3]]
     }
-    */
-    return { init, plotWeather, plotPower, renderAxis, id};
+
+    const plotPoint = (p) =>
+    {
+        context.beginPath();
+        context.strokeStyle = p[2];         //Set color
+        context.moveTo(p[0][0], p[0][1]);   //Start at point[0]
+        context.lineTo(p[1][0], p[1][1]);   //Draw line to point[1]
+        context.stroke();
+    }
+    
+    return { init, plotWeather, plotPower, id};
 };
 // Write your JavaScript code.

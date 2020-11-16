@@ -79,7 +79,7 @@ namespace SolarDB.Models
                             DateTime DateAndTime, 
                             double AmbientTemp, 
                             double ModuleTemp, 
-                            double Irridation }
+                            double Irradiation }
                         */
 
                         DateTime dateTime = DateTime.Parse(values[0]);
@@ -94,7 +94,7 @@ namespace SolarDB.Models
                             PlantNumber = plantNum,
                             AmbientTemp = aTemp,
                             ModuleTemp = mTemp,
-                            Irridation = irrid
+                            Irradiation = irrid
                         };
 
                         context.WeatherReadings.Add(r);
@@ -148,7 +148,7 @@ namespace SolarDB.Models
                                 string SourceKey,
                                 double DC_Power, 
                                 double AC_Power, 
-                                double Irridation }
+                                double Irradiation }
                         */
 
                         DateTime dateTime = DateTime.Parse(values[0]);
