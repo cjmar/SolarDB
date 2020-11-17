@@ -25,6 +25,7 @@ namespace SolarDB
                 try
                 {
                     SolarDBSeeder.Init(services);
+                    SolarDBSeeder.AddMissingDateStamps(services);
                 }
                 catch(Exception e)
                 {

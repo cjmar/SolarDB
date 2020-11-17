@@ -14,6 +14,61 @@ function checkboxValue(id)
     else element.setAttribute("value", "false");
 }
 
+
+/*  Fills out Data[] with a presorted by date JSON
+ *  {
+ *      facility: int,
+ *      weather: 
+ *          [{ ambientTemp : double, moduleTemp : double, irradiation : double}]
+ *      Source key string as object key 0..n: 
+ *          [{ dC_power : double, aC_power : double, dailyYield : double, totalYield : double}]
+ *  }
+ *  
+ *  All of these are pre sorted
+ */
+var data = [];
+data.getFac = function (facNum) { return this.find(e => e.facility == facNum) };
+data.getSrc = function (srcStr)
+{
+    for (i = 0; i < this.length; i++) {
+        if (this[i][srcStr]){
+            return this[i][srcStr];
+        }
+    }
+};
+
+function parseData() {
+    //Add each of the facilities
+    for (i = 0; i < facilities.length; i++) {
+        data.push({ "facility": facilities[i]["plantNumber"], "weather": [] });
+    }
+    for (i = 0; i < weather.length; i++) {
+        let d = data.getFac(weather[i].plantNumber);
+        if (d) {
+            d.weather.push(
+                {
+                    "ambientTemp": weather[i].ambientTemp, "moduleTemp": weather[i].moduleTemp, "irradiation": weather[i].irradiation
+                });
+        }
+    }
+    for (let i = 0; i < powerSource.length; i++) {
+        let d = data.getFac(powerSource[i].plantNumber);
+        if (d) {
+            let key = powerSource[i].sourceKey;
+            d[key] = [];
+        }
+    }
+    for (let i = 0; i < power.length; i++) {
+        let d = data.getSrc(power[i].sourceKey);
+        if (d) {
+            d.push(
+            {
+                "dC_Power": power[i]["dC_Power"], "aC_Power": power[i]["aC_Power"], "dailyYield": power[i]["dailyYield"], "totalYield": power[i]["totalYield"]
+            });
+        }
+    }
+}
+
 //{"plantNumber":x}
 //{"plantNumber":x,"dateAndTime":"x","ambientTemp":x,"moduleTemp":x,"irridation":x}
 //{"sourceKey":"x","dateAndTime":"x","dC_Power":x,"aC_Power":x,"dailyYield":x,"totalYield":x}

@@ -13,6 +13,8 @@ namespace SolarDB.Models
 {
     public static class SolarDBSeeder
     {
+        static bool stampFixed = false;
+
         public static void Init(IServiceProvider serviceProvider)
         {
             using (var context = new SolarContext(
@@ -21,6 +23,8 @@ namespace SolarDB.Models
             {
                 if(context.WeatherReadings.Any())
                 {
+                    //If any readings exist, then database is already seeded and missing records added
+                    stampFixed = true;
                     return;
                 }
 
@@ -228,6 +232,206 @@ namespace SolarDB.Models
                 context.SaveChanges();
                 System.Diagnostics.Debug.WriteLine("Added Facility " + num + " to Database.");
             }
+        }
+
+        /*  Original CSV tables are missing large chunks of data. This method scans through the database and makes sure a record exists for each date
+         *  Values inserted are -1
+         *  This method presumes the database to be in a state where it has just been successfully seeded
+         *  
+         */
+        public static void AddMissingDateStamps(IServiceProvider serviceProvider)
+        {
+            if(!stampFixed)
+            {
+                System.Diagnostics.Debug.WriteLine("Searching for and adding missing date values to Database.");
+
+                using (var context = new SolarContext(
+                        serviceProvider.GetRequiredService<DbContextOptions<SolarContext>>()
+                    ))
+                {
+                    //Invoking these takes a long time. It scans the entire database
+                    addMissingWeather(context);
+                    addMissingPower(context);
+                }
+            }
+            stampFixed = true;
+        }
+
+        static void addMissingPower(SolarContext context)
+        {
+            int plant1 = 4135001;
+            int plant2 = 4136001;
+            DateTime firstDate = DateTime.Parse("05-15-2020 00:00");
+            DateTime lastDate = DateTime.Parse("06-17-2020 23:45");
+            int count = 0;
+            int recordsAdded = 0;
+
+            //Each power source array is treated seperately
+            Dictionary<string, List<PowerReading>> sources5001 = new Dictionary<string, List<PowerReading>>();
+            Dictionary<string, List<PowerReading>> sources6001 = new Dictionary<string, List<PowerReading>>();
+            List<PowerSource> src = context.PowerSources.Where(ps => ps.PlantNumber == plant1).ToList();
+
+            //Populate dictionary with source keys and power readings for that source ordered by date
+            foreach (PowerSource ps in src)
+            {
+                sources5001.Add(ps.SourceKey, context.PowerReadings.Where(pr => pr.SourceKey == ps.SourceKey).OrderBy(pr => pr.DateAndTime).ToList());
+                count += sources5001[ps.SourceKey].Count();
+            }
+
+            src = context.PowerSources.Where(ps => ps.PlantNumber == plant2).ToList();
+            foreach (PowerSource ps in src)
+            {
+                sources6001.Add(ps.SourceKey, context.PowerReadings.Where(pr => pr.SourceKey == ps.SourceKey).OrderBy(pr => pr.DateAndTime).ToList());
+                count += sources6001[ps.SourceKey].Count();
+            }
+
+            System.Diagnostics.Debug.WriteLine(count + " power records found. Scanning for missing records.");
+
+            //Iterate over all the sourceKeys in each sources list comparing dates
+            foreach (KeyValuePair<string, List<PowerReading>> s in sources5001)
+            {
+                recordsAdded += addMissingArray(firstDate, lastDate, s, context);
+            }
+            foreach (KeyValuePair<string, List<PowerReading>> s in sources6001)
+            {
+                recordsAdded += addMissingArray(firstDate, lastDate, s, context);
+            }
+
+            count = context.PowerReadings.Count();
+            System.Diagnostics.Debug.WriteLine(recordsAdded + " total records were added. " + count + " total records");
+        }
+
+        static int addMissingArray(DateTime fd, DateTime ld, KeyValuePair<string, List<PowerReading>> s, SolarContext context)
+        {
+            DateTime currDate = fd;
+            int index = 0;
+            int records = 0;
+
+            while (currDate != ld)
+            {
+                if (index > s.Value.Count)  //List doesnt include readings to end of date
+                {
+                    PowerReading r = new PowerReading()
+                    {
+                        DateAndTime = currDate,
+                        SourceKey = s.Key,
+                        DC_Power = -1.0,
+                        AC_Power = -1.0,
+                        DailyYield = -1.0,
+                        TotalYield = -1.0
+                    };
+                    context.PowerReadings.Add(r);
+                    records++;
+                }
+                else if (currDate != s.Value[index].DateAndTime) //List missing readings in middle 
+                {
+                    PowerReading r = new PowerReading()
+                    {
+                        DateAndTime = currDate,
+                        SourceKey = s.Key,
+                        DC_Power = -1.0,
+                        AC_Power = -1.0,
+                        DailyYield = -1.0,
+                        TotalYield = -1.0
+                    };
+                    context.PowerReadings.Add(r);
+                    records++;
+                }
+                else index++;   //Continue
+
+                currDate = currDate.AddMinutes(15);
+            }
+            //Search for missing date values in power table
+            context.SaveChanges();
+            System.Diagnostics.Debug.WriteLine("Finished power array " + s.Key);
+
+            return records;
+        }
+
+        static void addMissingWeather(SolarContext context)
+        {
+            int plant1 = 4135001;
+            int plant2 = 4136001;
+            DateTime firstDate = DateTime.Parse("05-15-2020 00:00");
+            DateTime lastDate = DateTime.Parse("06-17-2020 23:45");
+            int recordsAdded = 0;
+
+            //Search for missing date values in weather table
+            List<WeatherReading> readings5001 = context.WeatherReadings.Where(wr => wr.PlantNumber == 4135001).OrderBy(wr => wr.DateAndTime).ToList();
+            List<WeatherReading> readings6001 = context.WeatherReadings.Where(wr => wr.PlantNumber == 4136001).OrderBy(wr => wr.DateAndTime).ToList();
+
+            System.Diagnostics.Debug.WriteLine((readings5001.Count + readings6001.Count) + " weather records found. Scanning for missing records.");
+
+            DateTime currDate = firstDate;
+            int index5001 = 0;
+            int index6001 = 0;
+
+
+
+            while (currDate != lastDate)
+            {
+                if (index5001 > readings5001.Count)  //List doesnt include readings to end of date
+                {
+                    WeatherReading r = new WeatherReading()
+                    {
+                        DateAndTime = currDate,
+                        PlantNumber = plant1,
+                        AmbientTemp = -1,
+                        ModuleTemp = -1,
+                        Irradiation = -1
+                    };
+                    context.WeatherReadings.Add(r);
+                    recordsAdded++;
+                }
+                else if (currDate != readings5001[index5001].DateAndTime) //List missing readings in middle 
+                {
+                    WeatherReading r = new WeatherReading()
+                    {
+                        DateAndTime = currDate,
+                        PlantNumber = plant1,
+                        AmbientTemp = -1,
+                        ModuleTemp = -1,
+                        Irradiation = -1
+                    };
+                    context.WeatherReadings.Add(r);
+                    recordsAdded++;
+                }
+                else index5001++;   //Continue
+
+                if (index6001 > readings6001.Count)  //List doesnt include readings to end of date
+                {
+                    WeatherReading r = new WeatherReading()
+                    {
+                        DateAndTime = currDate,
+                        PlantNumber = plant2,
+                        AmbientTemp = -1,
+                        ModuleTemp = -1,
+                        Irradiation = -1
+                    };
+                    context.WeatherReadings.Add(r);
+                    recordsAdded++;
+                }
+                else if (currDate != readings6001[index6001].DateAndTime) //List missing readings in middle 
+                {
+                    WeatherReading r = new WeatherReading()
+                    {
+                        DateAndTime = currDate,
+                        PlantNumber = plant2,
+                        AmbientTemp = -1,
+                        ModuleTemp = -1,
+                        Irradiation = -1
+                    };
+                    context.WeatherReadings.Add(r);
+                    recordsAdded++;
+                }
+                else index6001++;   //Continue
+
+                currDate = currDate.AddMinutes(15); //I don't know why this has to return a DateTime
+            }
+            //Search for missing date values in weather table
+            context.SaveChanges();
+            int count = context.WeatherReadings.Count();
+            System.Diagnostics.Debug.WriteLine(recordsAdded + " records were added. " + count + " total records");
         }
     }
 }
