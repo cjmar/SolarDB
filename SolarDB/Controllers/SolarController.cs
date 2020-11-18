@@ -101,6 +101,9 @@ namespace SolarDB.Controllers
             {
                 dateStart = info.dateStart,
                 dateEnd = info.dateEnd,
+                showPower = info.showPower,
+                showWeather = info.showWeather,
+                
 
                 facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
                                                         .Select(f => new SVMFacility(f))

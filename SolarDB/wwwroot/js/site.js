@@ -14,18 +14,17 @@ function checkboxValue(id)
     else element.setAttribute("value", "false");
 }
 
+function setCheckbox(id, value)
+{
+    let element = document.getElementById(id);
+    element.checked = value;
+    if (value)
+        element.setAttribute("value", "true");
 
-/*  Fills out Data[] with a presorted by date JSON
- *  {
- *      facility: int,
- *      weather: 
- *          [{ ambientTemp : double, moduleTemp : double, irradiation : double}]
- *      Source key string as object key 0..n: 
- *          [{ dC_power : double, aC_power : double, dailyYield : double, totalYield : double}]
- *  }
- *  
- *  All of these are pre sorted
- */
+    else element.setAttribute("value", "false");
+}
+
+//Basic data object 
 var data = [];
 data.getFac = function (facNum) { return this.find(e => e.facility == facNum) };
 data.getSrc = function (srcStr)
@@ -37,6 +36,19 @@ data.getSrc = function (srcStr)
     }
 };
 
+/*  Reads all the passed @model lists into data[]
+ *  data JSON looks like this
+ *  data{
+ *      obj { 
+ *          "facility" : facNum, 
+ *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ], 
+ *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
+ *          }//end obj
+ *      getFac(facNum); Returns obj where facility = facNum, or undefined
+ *      getSrc(srcStr); Returns source array in obj where sourceKey = srcStr, or undefined
+ *  }//end data
+ * 
+ */
 function parseData() {
     //Add each of the facilities
     for (i = 0; i < facilities.length; i++) {
@@ -78,7 +90,7 @@ const charts = (() =>
     let canvas;
     let context;
     let offSet = 50;
-    let xLabels = [];   //Array of strings
+    let xLabels = [];   //Array of strings for dates
     let dayCount = 1;   //If days are over a value then a special consideration is made for the xLabel
     let daySwitchNum = 3;   //After this many days, it just shows dates instead of time
 
@@ -168,7 +180,7 @@ const charts = (() =>
         let y = canvas.clientHeight;
 
         if (xLabels.length == 0) { xLabels.push("No Data") }
-        let xStep = (canvas.clientWidth - offSet) / (xLabels.length);
+        let xStep = (canvas.clientWidth - (offSet * 2)) / (xLabels.length);
         if (dayCount > daySwitchNum) { dayCount = 1; }
 
 
@@ -195,13 +207,6 @@ const charts = (() =>
     return {init, getChart, update};
 })();
 
-//Javascript namespace that packages up the JSON into a datastructure
-const allData = () =>
-    ({
-        
-
-    });
-
 //Factory for a graph
 //Allows multiple graphs to be drawn to a single canvas 
 const chart = (chartName) =>
@@ -225,7 +230,7 @@ const chart = (chartName) =>
         //context.strokeStyle = "#000000"; // Grid line color
         //context.beginPath();
 
-        chartW = canvas.clientWidth - offSet;
+        chartW = canvas.clientWidth - (offSet * 2);
         chartH = canvas.clientHeight - offSet;
     }
 
@@ -238,6 +243,7 @@ const chart = (chartName) =>
     }
 
     //Draws weather data
+    //This basically needs to be completely rewritten
     const plotWeather = () =>
     {
         xScale = chartW / weather.length;
@@ -255,33 +261,23 @@ const chart = (chartName) =>
             fac.push(f);
         }
         
-        let ambPoint = [[xScale + offSet + 4, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale }
-        let modPoint = [[xScale + offSet + 4, 0], [0, 0], "#ffa500", -1]; //#ffa500
-        let radPoint = [[xScale + offSet + 4, 0], [0, 0], "#999900", -1];
+        let ambPoint = [[xScale + offSet + 4, 0], [0, 0], "#ff0000"]; //{ [lastX, lastY], [nowX, nowY], color, yscale }
+        let modPoint = [[xScale + offSet + 4, 0], [0, 0], "#ffa500"]; //#ffa500
+        let radPoint = [[xScale + offSet + 4, 0], [0, 0], "#999900"];
 
-        let maxAmb = ambPoint[3];
-        let maxMod = modPoint[3];
-        let maxRad = radPoint[3];
+        let maxAmb = -1;
+        let maxMod = -1;
+        let maxRad = -1;
 
         let facNum = 0;
         //"ambientTemp" ,"moduleTemp", "irradiation"
         //Find the max values for each point type
         for (i = 0; i < weather.length; i++)                    //Linear scan to get setup data. y scaling
         {
-            ambPoint[3] = (ambPoint[3] > weather[i]["ambientTemp"]) ? ambPoint[3] : weather[i]["ambientTemp"];
-            modPoint[3] = (modPoint[3] > weather[i]["moduleTemp"]) ? modPoint[3] : weather[i]["moduleTemp"];
-            radPoint[3] = (radPoint[3] > weather[i]["irradiation"]) ? radPoint[3] : weather[i]["irradiation"];
+            maxAmb = (maxAmb > weather[i]["ambientTemp"]) ? maxAmb : weather[i]["ambientTemp"];
+            maxMod = (maxMod > weather[i]["moduleTemp"]) ? maxMod : weather[i]["moduleTemp"];
+            maxRad = (maxRad > weather[i]["irradiation"]) ? maxRad : weather[i]["irradiation"];
 
-            maxAmb = ambPoint[3];
-            maxMod = modPoint[3];
-            maxRad = radPoint[3];
-
-            //for (i = 0; i < facilities.length; i++)
-            //{
-             //   if (weather[i]["plantNumber"] == fac[i][3]) {
-              //      console.log("Matching plant");
-               // }
-            //}
         }
         //FACILITY SET Y SCALE
         for (i = 0; i < facilities.length; i++) {
@@ -291,9 +287,13 @@ const chart = (chartName) =>
         }
 
 
-        ambPoint[3] = chartH / ambPoint[3] / 2; //These set the max Y values a datapoint can be
-        modPoint[3] = chartH / modPoint[3] / 2;
-        radPoint[3] = chartH / radPoint[3] / 3;
+        ambPoint[3] = chartH / maxAmb / 2; //These scale values to the chart height
+        modPoint[3] = chartH / maxMod / 2;
+        radPoint[3] = chartH / maxRad / 3;
+
+        drawLabel(ambPoint[2], "Ambient Temp", chartH - maxAmb * ambPoint[3], "right"); //These are close
+        drawLabel(modPoint[2], "Module Temp", chartH - maxMod * modPoint[3], "right");
+        drawLabel(radPoint[2], "Irradiation", chartH - maxRad * radPoint[3], "right");
 
         //Set first values
         ambPoint[0][1] = chartH - (weather[0]["ambientTemp"] * ambPoint[3]);
@@ -313,10 +313,29 @@ const chart = (chartName) =>
         }
     }
 
+    //Draws a colored line to represent a data point and its highest value
+    //Drawn at the y coord of the highest value
+    //Have 50 pixels to work with, names need to be short
+    const drawLabel = (color, name, yVal, leftOrRight) =>
+    {
+        let xVal = 0;
+        if (leftOrRight == "left")
+            xVal = 1;
+        if (leftOrRight == "right")
+            xVal = chartW + offSet - 1;
+
+
+        context.beginPath();
+        context.fillStyle = color;
+        context.fillRect(xVal, yVal, offSet, 3); //Draws the line
+        context.stroke();
+        context.closePath();
+    }
+
     const setPoint = (p, i, value) =>
     {
         p[1] = p[0];
-        p[0] = [i * xScale + offSet + 4, chartH - value * p[3]]
+        p[0] = [i * xScale + offSet, chartH - value * p[3]]
     }
 
     const plotPoint = (p) =>

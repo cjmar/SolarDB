@@ -80,6 +80,8 @@ namespace SolarDB.ViewModel
         //Using these dates are used to remember GUI selections
         public DateTime dateStart { get; set; }
         public DateTime dateEnd { get; set; } 
+        public bool showWeather { get; set; }
+        public bool showPower { get; set; }
 
         public IEnumerable<SVMWeather> weatherReadings { get; set; }
         public IEnumerable<SVMPower> powerReadings { get; set; }
@@ -94,6 +96,8 @@ namespace SolarDB.ViewModel
         {
             dateStart = DateTime.Parse("05-15-2020 00:00"); //By default set to the first days worth of data
             dateEnd = DateTime.Parse("05-16-2020 00:00");
+            showWeather = false;
+            showPower = false;
             weatherReadings = new List<SVMWeather>();
             powerReadings = new List<SVMPower>();
             powerSources = new List<SVMPowerSource>();
