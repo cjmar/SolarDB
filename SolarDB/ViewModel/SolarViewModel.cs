@@ -82,6 +82,7 @@ namespace SolarDB.ViewModel
         public DateTime dateEnd { get; set; } 
         public bool showWeather { get; set; }
         public bool showPower { get; set; }
+        public int plantNum { get; set; }
 
         public IEnumerable<SVMWeather> weatherReadings { get; set; }
         public IEnumerable<SVMPower> powerReadings { get; set; }
@@ -98,6 +99,7 @@ namespace SolarDB.ViewModel
             dateEnd = DateTime.Parse("05-16-2020 00:00");
             showWeather = false;
             showPower = false;
+            plantNum = 4135001;
             weatherReadings = new List<SVMWeather>();
             powerReadings = new List<SVMPower>();
             powerSources = new List<SVMPowerSource>();

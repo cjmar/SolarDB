@@ -54,11 +54,7 @@ namespace SolarDB.Controllers
         public async Task<IActionResult> Info()
         {
             //Get all Facilities for dropdown 
-            SelectTarget info = new SelectTarget
-            {
-                plantNum = -1,
-            };
-
+            SelectTarget info = new SelectTarget();
             SolarViewModel rtn = await SVMBuilder(info);
 
             return View(rtn);
@@ -103,7 +99,7 @@ namespace SolarDB.Controllers
                 dateEnd = info.dateEnd,
                 showPower = info.showPower,
                 showWeather = info.showWeather,
-                
+                plantNum = info.plantNum,
 
                 facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
                                                         .Select(f => new SVMFacility(f))
@@ -124,11 +120,6 @@ namespace SolarDB.Controllers
                 rtn.powerReadings = await PopulatePowerReadings(info);
                 rtn.powerSources = await PopulatePowerSources(info);
             }
-
-            System.Diagnostics.Debug.WriteLine("Facility count: " + rtn.facilities.Count() + " selected " + info.plantNum);
-            System.Diagnostics.Debug.WriteLine("Weather reading count: " + rtn.weatherReadings.Count() + " show " + info.showWeather);
-            System.Diagnostics.Debug.WriteLine("Power readings count: " + rtn.powerReadings.Count() + " show " + info.showPower);
-            System.Diagnostics.Debug.WriteLine("Power Sources count: " + rtn.powerSources.Count());
 
             return rtn;
         }
@@ -193,7 +184,7 @@ namespace SolarDB.Controllers
         {
             //Empty string means get all sources
 
-            if (info.plantNum != -1)    //ALL power sources from ALL facilities
+            if (info.plantNum == -1)    //ALL power sources from ALL facilities
             {
                 return await _context.PowerSources
                                 .OrderBy(ps => ps.PlantNumber)

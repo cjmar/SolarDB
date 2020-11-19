@@ -27,20 +27,29 @@ function setCheckbox(id, value)
 //Basic data object 
 var data = [];
 data.getFac = function (facNum) { return this.find(e => e.facility == facNum) };
-data.getSrc = function (srcStr)
+data.getSrc = function (srcStr) //-1 means just grab first src
 {
     for (i = 0; i < this.length; i++) {
-        if (this[i][srcStr]){
+        if (this[i][srcStr]) {
             return this[i][srcStr];
+        }
+        else if (srcStr == -1) {
+            if (powerSource.length > 0)
+            { return powerSource[0].sourceKey;}
         }
     }
 };
+data.getFacArr = function ()
+{
+    
+}
 
 /*  Reads all the passed @model lists into data[]
  *  data JSON looks like this
  *  data{
  *      obj { 
- *          "facility" : facNum, 
+ *          "facility" : facNum,
+ *          "dates" : [],
  *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ], 
  *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
  *          }//end obj
@@ -50,9 +59,19 @@ data.getSrc = function (srcStr)
  * 
  */
 function parseData() {
+    //Check used to make sure dates arent added multiple times
+    let dateAdded = 0;
+    data["dates"] = [];     //List of all the dates
+    data["facNums"] = [];   //List of all the facility numbers
+
+    if (plantSelect == -1)
+    {
+        plantSelect = 4135001;
+    }
     //Add each of the facilities
     for (i = 0; i < facilities.length; i++) {
         data.push({ "facility": facilities[i]["plantNumber"], "weather": [] });
+        data.facNums.push(facilities[i]["plantNumber"]);
     }
     for (i = 0; i < weather.length; i++) {
         let d = data.getFac(weather[i].plantNumber);
@@ -61,7 +80,15 @@ function parseData() {
                 {
                     "ambientTemp": weather[i].ambientTemp, "moduleTemp": weather[i].moduleTemp, "irradiation": weather[i].irradiation
                 });
+            if (plantSelect == weather[i].plantNumber)
+            {
+                data.dates.push(weather[i].dateAndTime);
+            }
         }
+    }
+    if (weather.length > 0)
+    {
+        dateAdded = 1;
     }
     for (let i = 0; i < powerSource.length; i++) {
         let d = data.getFac(powerSource[i].plantNumber);
@@ -70,13 +97,21 @@ function parseData() {
             d[key] = [];
         }
     }
+    let src;
+
     for (let i = 0; i < power.length; i++) {
         let d = data.getSrc(power[i].sourceKey);
-        if (d) {
+        if (d)
+        {
+            if(!src) src = power[i].sourceKey;
             d.push(
             {
                 "dC_Power": power[i]["dC_Power"], "aC_Power": power[i]["aC_Power"], "dailyYield": power[i]["dailyYield"], "totalYield": power[i]["totalYield"]
             });
+        }
+        if (!dateAdded && src == power[i].sourceKey)
+        {
+            data.dates.push(power[i].dateAndTime);
         }
     }
 }
@@ -285,15 +320,32 @@ const chart = (chartName) =>
             fac[i][1][3] = chartH / maxMod / 2;
             fac[i][2][3] = chartH / maxRad / 3;
         }
+        let maxC = (maxAmb > maxMod) ? maxAmb : maxMod;
+        let maxCScale = chartH / 50 / 2;
+        let radScale = chartH / 0.5 / 3;
 
+        console.log("Max Ambient " + maxAmb);
+        console.log("Max Module  " + maxMod);
+        console.log("Max Rad     " + maxRad);
 
-        ambPoint[3] = chartH / maxAmb / 2; //These scale values to the chart height
-        modPoint[3] = chartH / maxMod / 2;
+        ambPoint[3] = chartH / maxC / 2; //These scale values to the chart height
+        modPoint[3] = chartH / maxC / 2;
         radPoint[3] = chartH / maxRad / 3;
 
-        drawLabel(ambPoint[2], "Ambient Temp", chartH - maxAmb * ambPoint[3], "right"); //These are close
-        drawLabel(modPoint[2], "Module Temp", chartH - maxMod * modPoint[3], "right");
-        drawLabel(radPoint[2], "Irradiation", chartH - maxRad * radPoint[3], "right");
+        //drawLabel(ambPoint[2], "Ambient Temp", chartH - maxAmb * ambPoint[3], "right"); //These are close
+        //drawLabel(modPoint[2], "Module Temp", chartH - maxMod * modPoint[3], "right");
+        //drawLabel(radPoint[2], "Irradiation", chartH - maxRad * radPoint[3], "right");
+
+        //Draw 5 labels for temperature on right side
+        for (i = 1; i < 6; i++)
+        {
+            drawLabel("#ff5200", (i * 10 + " C"), chartH - (i * 10) * maxCScale, "right"); //Temp increments of 25
+        }
+
+        for (i = 1; i < 3; i++)
+        {
+            drawLabel("#999900", (i * 0.5 + " Rad"), chartH - (i * 0.5) / 2 * radScale, "left");
+        }
 
         //Set first values
         ambPoint[0][1] = chartH - (weather[0]["ambientTemp"] * ambPoint[3]);
@@ -316,20 +368,25 @@ const chart = (chartName) =>
     //Draws a colored line to represent a data point and its highest value
     //Drawn at the y coord of the highest value
     //Have 50 pixels to work with, names need to be short
+    //color = color of line, name = text drawn, yVal is height, left or right side
+    //Text is always black
+
     const drawLabel = (color, name, yVal, leftOrRight) =>
     {
         let xVal = 0;
         if (leftOrRight == "left")
-            xVal = 1;
+            xVal = 0;
         if (leftOrRight == "right")
-            xVal = chartW + offSet - 1;
-
+            xVal = chartW + offSet;
 
         context.beginPath();
+        context.fillStyle = "#000000";
+        console.log(context.strokeStyle);
+        context.fillText(name, xVal, yVal + 15);
+
         context.fillStyle = color;
         context.fillRect(xVal, yVal, offSet, 3); //Draws the line
         context.stroke();
-        context.closePath();
     }
 
     const setPoint = (p, i, value) =>
@@ -350,3 +407,153 @@ const chart = (chartName) =>
     return { init, plotWeather, plotPower, id};
 };
 // Write your JavaScript code.
+
+//######################################################################################################################################
+//######################################################################################################################################
+//######################################################################################################################################
+//######################################################################################################################################
+
+//Gonna just rewrite it all here
+
+/*  Reads all the passed @model lists into data[]
+ *  data JSON looks like this
+ *  data{
+ *      obj {
+ *          "facility" : facNum,
+ *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ],
+ *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
+ *          }//end obj
+ *      getFac(facNum); Returns obj where facility = facNum, or undefined
+ *      getSrc(srcStr); Returns source array in obj where sourceKey = srcStr, or undefined
+ *  }//end data
+ *
+ */
+
+const chart1 = (() =>
+{
+    let canvas;
+    let context;
+    let offSet = 50;
+    let xLabel = [];
+    let chartH;          
+    let chartW;  
+    let dayCount = 0;
+    //Sets up how much of the chart each item takes up
+    let ambientScale = 2;
+    let moduleScale = 2;
+    let radiateScale = 3;
+
+
+    const init = (id) =>
+    {
+        canvas = document.getElementById(id);
+        context = canvas.getContext("2d");
+        context.font = "15px Arial";
+        context.lineWidth = 1;
+        chartH = canvas.clientHeight - offSet;         //Space at bottom for labels
+        chartW = canvas.clientWidth - offSet - offSet; //Space on left and right for labels
+        popXlabel();
+        draw();
+    }
+
+    //Draws the chart
+    const draw = () =>
+    {
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        renderXAxis();
+        plotData();
+    }
+
+    const renderXAxis = () =>
+    {
+        context.beginPath();
+        context.fillStyle = "#000000"
+        context.fillRect(offSet, chartH, chartW, 3);
+        context.stroke();
+        let y = canvas.clientHeight;    //Going to access this a lot
+        if (xLabel.lengh == 0) xLabel.push(["No", "Data"]);
+        let xStep = chartW / xLabel.length;
+        if (dayCount == 3) dayCount = 1;
+
+        for (i = 0; i < xLabel.length; i++)
+        {
+            let x = (xStep * i) + offSet;
+            draw45DegreeText(xLabel[i][1], x, y);
+        }
+    }
+
+    //Actually -45 degrees
+    //Draws slanted text at the x, y coored passed
+    const draw45DegreeText = (text, x, y) => {
+        context.save();
+        let r = (-45 * Math.PI / 180);
+        context.translate(x - 13, y);
+        context.rotate(r);
+        context.fillText(text, 0, 0);
+        context.restore();
+        context.fillRect(x, y - 50, 4, 10);
+    }
+
+    const popXlabel = () =>
+    {
+
+        for (i = 0; i < data.dates.length; i++)
+        {
+            let text = data.dates[i];
+            let n = text.indexOf("T");
+            if (text.substring(n + 1) == "00:00:00")
+            {
+                dayCount++;
+            }
+            if (text.substring(n + 4, n + 6) == "00")
+            {
+                //Pushes a pair {date, time} => {"mm-dd", "hh:mm"}
+                xLabel.push([text.substring(5, n), text.substring(n + 1, n+ 6)]);
+            }
+        }
+        if (dayCount > 3) //After this many days, it just shows month and day only
+        {
+            let temp = [];
+            for (i = 0; i < xLabel.length; i++)
+            {
+                if (!temp.find(x => x[0] == xLabel[i][0])) //Adds first item in pair if it doesnt already exist in temp
+                    temp.push([xLabel[i][0], xLabel[i][0]]);
+            }
+            xLabel = temp.slice(0);
+        }
+        console.log(xLabel);
+    }
+
+    const plotData = () =>
+    {
+        plotWeather();
+    }
+
+    const plotWeather = () =>
+    {
+        for (i = 0; i < data.facNums; i++)//For each facility. 
+        {
+            xScale = chartW / data.getFac(i).weather.length;
+
+
+        }
+    }
+
+    //Shifts the points left for easier line drawing
+    const setPoint = (p, x, y) =>
+    {
+        p[1] = p[0];
+        p[0] = [x, y];
+    }
+
+    const plotPoint = (p) =>
+    {
+        context.beginPath();
+        context.strokeStyle = p[2];         //Set color
+        context.moveTo(p[0][0], p[0][1]);   //Start at point[0]
+        context.lineTo(p[1][0], p[1][1]);   //Draw line to point[1]
+        context.stroke();
+    }
+
+    return { init, draw};
+})();

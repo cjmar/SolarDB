@@ -5,6 +5,7 @@
     var weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
     var power = @Html.Raw(Json.Serialize(@Model.powerReadings));
     var powerSource = @Html.Raw(Json.Serialize(Model.powerSources));
+    var plantSelect = @Model.plantNum;
 </script>
 
 @{
@@ -111,10 +112,24 @@
             @{
                 foreach (var fc in Model.facilities)
                 {
-                    <option value="@fc.PlantNumber">@fc.PlantNumber</option>
+                    if (Model.plantNum == fc.PlantNumber)
+                    {
+                        <option selected value="@fc.PlantNumber">@fc.PlantNumber</option>
+                    }
+                    else
+                    {
+                        <option value="@fc.PlantNumber">@fc.PlantNumber</option>
+                    }
+                }
+                if (Model.plantNum == -1)
+                {
+                    <option selected value="All">All</option>
+                }
+                else
+                {
+                    <option value="All">All</option>
                 }
             }
-            <option value="All">All</option>
         </select>
         <input type="submit" style="float:right;" value="Submit" />
     </form>
@@ -134,7 +149,7 @@
     <hr />
     <div id="chartContainer">
         <canvas id="graph" width="800" height="500">Your browser does not support the canvas element.</canvas>
-        <script>charts.init("graph"); parseData(); console.log(data);</script>
+        <script>parseData(); console.log(data); chart1.init("graph");</script>
     </div>
     <div style="float:left;">
         <div style="width:100%;height:20%;background-color:blue;">words</div>
