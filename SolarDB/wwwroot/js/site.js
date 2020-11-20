@@ -26,7 +26,10 @@ function setCheckbox(id, value)
 
 //Basic data object 
 var data = [];
-data.getFac = function (facNum) { return this.find(e => e.facility == facNum) };
+data.getFac = function (facNum)
+{
+    return this.find(e => e.facility == facNum)
+};
 data.getSrc = function (srcStr) //-1 means just grab first src
 {
     for (i = 0; i < this.length; i++) {
@@ -39,10 +42,6 @@ data.getSrc = function (srcStr) //-1 means just grab first src
         }
     }
 };
-data.getFacArr = function ()
-{
-    
-}
 
 /*  Reads all the passed @model lists into data[]
  *  data JSON looks like this
@@ -63,6 +62,8 @@ function parseData() {
     let dateAdded = 0;
     data["dates"] = [];     //List of all the dates
     data["facNums"] = [];   //List of all the facility numbers
+    data["weatherExists"] = weather.length > 0;
+    data["powerExists"] = power.length > 0;
 
     if (plantSelect == -1)
     {
@@ -70,7 +71,7 @@ function parseData() {
     }
     //Add each of the facilities
     for (i = 0; i < facilities.length; i++) {
-        data.push({ "facility": facilities[i]["plantNumber"], "weather": [] });
+        data.push({ "facility": facilities[i]["plantNumber"], "weather": [], "srcKeys" : [] });
         data.facNums.push(facilities[i]["plantNumber"]);
     }
     for (i = 0; i < weather.length; i++) {
@@ -94,6 +95,7 @@ function parseData() {
         let d = data.getFac(powerSource[i].plantNumber);
         if (d) {
             let key = powerSource[i].sourceKey;
+            d.srcKeys.push(key);
             d[key] = [];
         }
     }
@@ -437,12 +439,17 @@ const chart1 = (() =>
     let xLabel = [];
     let chartH;          
     let chartW;  
-    let dayCount = 0;
+    let dayCount = 1;
     //Sets up how much of the chart each item takes up
     let ambientScale = 2;
     let moduleScale = 2;
     let radiateScale = 3;
 
+    let showAmbientData = -1;
+    let showModuleData = showAmbientData;
+    let showIrridData = showAmbientData;
+
+    let showPowerData = -1;
 
     const init = (id) =>
     {
@@ -452,6 +459,12 @@ const chart1 = (() =>
         context.lineWidth = 1;
         chartH = canvas.clientHeight - offSet;         //Space at bottom for labels
         chartW = canvas.clientWidth - offSet - offSet; //Space on left and right for labels
+
+        showAmbientData = data.weatherExists;
+        showModuleData = showAmbientData;
+        showIrridData = showAmbientData;
+        showPowerData = data.powerExists;
+
         popXlabel();
         draw();
     }
@@ -473,9 +486,9 @@ const chart1 = (() =>
         let y = canvas.clientHeight;    //Going to access this a lot
         if (xLabel.lengh == 0) xLabel.push(["No", "Data"]);
         let xStep = chartW / xLabel.length;
-        if (dayCount == 3) dayCount = 1;
+        if (dayCount > 3) dayCount = 1;
 
-        for (i = 0; i < xLabel.length; i++)
+        for (i = 0; i < xLabel.length; i += dayCount)
         {
             let x = (xStep * i) + offSet;
             draw45DegreeText(xLabel[i][1], x, y);
@@ -496,7 +509,6 @@ const chart1 = (() =>
 
     const popXlabel = () =>
     {
-
         for (i = 0; i < data.dates.length; i++)
         {
             let text = data.dates[i];
@@ -521,29 +533,194 @@ const chart1 = (() =>
             }
             xLabel = temp.slice(0);
         }
-        console.log(xLabel);
     }
 
     const plotData = () =>
     {
-        plotWeather();
+        if (showAmbientData || showModuleData || showIrridData)
+            plotWeather();
+
+        if (showPowerData)
+            plotPower();
     }
 
     const plotWeather = () =>
     {
-        for (i = 0; i < data.facNums; i++)//For each facility. 
+        for (index = 0; index < data.facNums.length; index++)//For each facility. 
         {
-            xScale = chartW / data.getFac(i).weather.length;
+            let currPlant = data.facNums[index];
+            let d = data.getFac(currPlant);
+
+            if (d.weather.length < 1) continue; //Skip if empty array
+            if (!document.getElementById("showPlant" + currPlant).checked) continue;
+
+            let xScale = chartW / d.weather.length;
+
+            //Setup initial point values
+            let ap = [[offSet, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale}
+            let mp = [[offSet, 0], [0, 0], "#ffa500", -1];
+            let rp = [[offSet, 0], [0, 0], "#999900", -1];
+            let maxC;
+
+            let maxAp = -1;
+            let maxMp = -1;
+            let maxRp = -1;
+            //Linear scan to setup scaling
+            for (i = 0; i < d.weather.length; i++)
+            {
+                maxAp = (maxAp > d.weather[i]["ambientTemp"]) ? maxAp : d.weather[i]["ambientTemp"];
+                maxMp = (maxMp > d.weather[i]["moduleTemp"]) ? maxMp : d.weather[i]["moduleTemp"];
+                maxRp = (maxRp > d.weather[i]["irradiation"]) ? maxRp : d.weather[i]["irradiation"];
+
+            }//Setup is complete
 
 
+            maxC = (maxAp > maxMp) ? maxAp : maxMp;
+            //Set up the scale values stored in index 3
+            ap[3] = chartH / maxC / ambientScale;
+            mp[3] = chartH / maxC / moduleScale;
+            rp[3] = chartH / maxRp / radiateScale;
+
+            //Set initial y coord
+            ap[0][1] = chartH - (d.weather[0]["ambientTemp"] * ap[3]);
+            mp[0][1] = chartH - (d.weather[0]["moduleTemp"] * mp[3]);
+            rp[0][1] = chartH - (d.weather[0]["irradiation"] * rp[3]);
+
+            for (i = 0; i < d.weather.length; i++)
+            {
+                //Draw the values
+                if (showAmbientData) {
+                    setWPoint(ap, i, d.weather[i]["ambientTemp"], xScale);
+                    plotPoint(ap);
+                }
+                if (showModuleData) {
+                    setWPoint(mp, i, d.weather[i]["moduleTemp"], xScale);
+                    plotPoint(mp);
+                }
+                if (showIrridData) {
+                    setWPoint(rp, i, d.weather[i]["irradiation"], xScale)
+                    plotPoint(rp)
+                }
+                
+            }
+        }//End for loop
+        drawWeatherLabel();
+    }
+
+    /*  Temperature values on right side
+     *  Irradiation on bottom left side
+     *  Line color legend top right
+     */
+    const drawWeatherLabel = () =>
+    {
+        let maxCScale = chartH / 50 / ambientScale;
+        let radScale = chartH / 0.5 / radiateScale;
+
+        if (showAmbientData || showModuleData)
+        {
+            //Draw 5 labels for temperature on right side
+            for (i = 1; i < 6; i++)
+            {
+                drawLabel("#ff5200", (i * 10 + " C"), chartH - (i * 10) * maxCScale, "right"); //Temp increments of 25
+            }
+        }
+        if (showIrridData)
+        {
+            for (i = 1; i < 3; i++)
+            {
+                drawLabel("#999900", (i * 0.5 + " Rad"), chartH - (i * 0.5) / 2 * radScale, "left");
+            }
         }
     }
 
+    //This is very similar to the weather plotting function
+    const plotPower = () =>
+    {
+        for (index = 0; index < data.facNums.length; index++)//For each facility. 
+        {
+            let currPlant = data.facNums[index];
+            let d = data.getFac(currPlant);
+
+            if (d.srcKeys.length < 1) continue;; //No data to show for this plant
+            if (!document.getElementById("showPlant" + currPlant).checked) continue;
+
+            let xScale = chartW / d.srcKeys[0].length; //Scale everything to this value
+
+            let ac = [[offSet, 0], [0, 0], "#AA00FF", -1]; //These values go about 400-800
+            let dc = [[offSet, 0], [0, 0], "#0000FF", -1]; //These values go about 6k -8k
+            let maxAc = -1;
+            let maxDc = -1;
+
+            //Linear scan for scaling setup
+            for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+            {
+                let sourceStr = d.srcKeys[srcIndex];
+                for (i = 0; i < d[sourceStr].length; i++)
+                {
+                    maxAc = (maxAc > d[sourceStr][i]["aC_Power"]) ? maxAc : d[sourceStr][i]["aC_Power"];
+                    maxDc = (maxDc > d[sourceStr][i]["dC_Power"]) ? maxDc : d[sourceStr][i]["dC_Power"];
+                }
+            }
+            //DC power is always much higher
+            maxDc = Math.ceil(maxDc / 1000) * 1000;
+            maxAc = Math.ceil(maxAc / 100) * 100;
+
+            ac[3] = chartH / maxAc / 2;
+            dc[3] = chartH / maxDc / 3;
+
+            //See what they look like just at 0
+            //Not minusing chart here so these values are on top
+            ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
+            dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
+
+            //Plot
+            for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+            {
+                let sourceStr = d.srcKeys[srcIndex];
+                console.log(d[sourceStr][50]["aC_Power"] * ac[3]);
+                for (i = 0; i < d[sourceStr].length; i++) //For each item in d[sourceKey]
+                {
+                    setPPoint(ac, i, d[sourceStr][i]["aC_Power"], xScale);
+                    plotPoint(ac);
+
+                    setPPoint(dc, i, d[sourceStr][i]["dC_Power"], xScale);
+                    plotPoint(dc);
+                }
+
+            }
+        }
+    }
+
+    const drawLabel = (color, name, yVal, leftOrRight) => {
+        let xVal = 0;
+        if (leftOrRight == "left")
+            xVal = 0;
+        if (leftOrRight == "right")
+            xVal = chartW + offSet;
+
+        context.beginPath();
+        context.fillStyle = "#000000";
+        context.fillText(name, xVal, yVal + 15);
+
+        context.fillStyle = color;
+        context.fillRect(xVal, yVal, offSet, 3); //Draws the line
+        context.stroke();
+    }
+
     //Shifts the points left for easier line drawing
-    const setPoint = (p, x, y) =>
+    const setWPoint = (p, i, value, xScale) =>
     {
         p[1] = p[0];
-        p[0] = [x, y];
+        if (value < 0) value = 0;
+        p[0] = [i * xScale + offSet, chartH - value * p[3]];
+    }
+
+    const setPPoint = (p, i, value, xScale) =>
+    {
+        p[1] = p[0];
+        if (value < 0) value = 0;
+        p[0] = [i * xScale + offSet, chartH  / 2 - value * p[3]];
+
     }
 
     const plotPoint = (p) =>

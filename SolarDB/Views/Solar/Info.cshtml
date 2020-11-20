@@ -19,7 +19,7 @@
         height: 100%;
     }
 
-    #chartContainer {
+    #genericContainer {
         height: 100%;
         float: left;
     }
@@ -30,9 +30,8 @@
         padding: 2px;
     }
 
-    #textBox
-    {
-        float:left;
+    #textBox {
+        float: left;
         margin-left: 10px;
         padding: 2px;
     }
@@ -43,6 +42,14 @@
         padding: 2px;
         margin: 1px;
         margin-bottom: 3px;
+    }
+
+    .checkBoxContainerSmall
+    {
+        border: solid black 1px;
+        float:left;
+        margin:1px;
+        padding:1px;
     }
 
     .checkBoxList {
@@ -140,21 +147,42 @@
 </div>
 <div class="clear"><br /></div>
 
-<!-- 
+<!--
     Main content Shown if post
-    Saves elements between page loads    
+    Saves elements between page loads
 -->
 @if (Context.Request.Method == "POST")
 {
     <hr />
-    <div id="chartContainer">
+    <div id="genericContainer">
         <canvas id="graph" width="800" height="500">Your browser does not support the canvas element.</canvas>
-        <script>parseData(); console.log(data); chart1.init("graph");</script>
     </div>
-    <div style="float:left;">
-        <div style="width:100%;height:20%;background-color:blue;">words</div>
-        <div class="clear"></div>
-        <div style="width:50%;height:80%;background-color:red;">yes</div>
+
+    <div class="genericContainer">
+        @{
+
+            if (Model.plantNum == -1)   //Show all ticks if load multiple plants
+            {
+                <p>Select which specific plant data to display.</p>
+                foreach (var fc in Model.facilities)
+                {
+                    string idLabel = "showPlant" + @fc.PlantNumber;
+
+                    <div class="checkBoxContainer">
+                        <label for="@idLabel">Plant @fc.PlantNumber</label>
+                        <input type="checkbox" id="@idLabel" name="@idLabel" onclick="chart1.draw();" checked />
+                    </div>
+                }
+            }
+            else
+            {
+                string idLabel = "showPlant" + @Model.plantNum;
+                <div class="checkBoxContainerSmall" style="display:none;">
+                    <label for="@idLabel">Show @Model.plantNum</label>
+                    <input type="checkbox" id="@idLabel" name="@idLabel" onclick="chart1.draw();" checked />
+                </div>
+            }
+        }
     </div>
 
     if (@Model.showWeather)
@@ -169,4 +197,6 @@
             setCheckbox("showPowerReading", true);
         </script>
     }
+
+    <script>parseData(); console.log(data); chart1.init("graph");</script>
 }
