@@ -1,9 +1,10 @@
 ﻿// Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
 // for details on configuring this project to bundle and minify static web assets.
 
-//This file is included in the header
+//This file is included in the HTML header
 
-//Changes the value attribute depending on checked value
+//These two methods change the value attribute depending on checked value
+//Used by the form data sent in a POST
 function checkboxValue(id)
 {
     let element = document.getElementById(id);
@@ -13,7 +14,6 @@ function checkboxValue(id)
 
     else element.setAttribute("value", "false");
 }
-
 function setCheckbox(id, value)
 {
     let element = document.getElementById(id);
@@ -24,38 +24,69 @@ function setCheckbox(id, value)
     else element.setAttribute("value", "false");
 }
 
+function onReady()
+{
+    parseData();
+    let hideBoxes = 0;
+
+    if (!data.powerExists)
+    {
+        document.getElementById("powerGraph").checked = false;
+        hideBoxes = 1;
+    }
+    if (!data.weatherExists)
+    {
+        document.getElementById("weatherGraph").checked = false;
+        hideBoxes = 1;
+    }
+    if (hideBoxes)
+    {
+        document.getElementById("weatherGraphBox").style.display = "none";
+        document.getElementById("powerGraphBox").style.display = "none";
+    }
+    console.log(data);
+    charts.init("graph"); 
+}
+
 //Basic data object 
 var data = [];
 data.getFac = function (facNum)
 {
     return this.find(e => e.facility == facNum)
 };
-data.getSrc = function (srcStr) //-1 means just grab first src
+data.getSrc = function (srcStr) 
 {
     for (i = 0; i < this.length; i++) {
         if (this[i][srcStr]) {
             return this[i][srcStr];
         }
-        else if (srcStr == -1) {
-            if (powerSource.length > 0)
-            { return powerSource[0].sourceKey;}
-        }
     }
 };
+data.getFacBySrc = function (srcStr)
+{
+    for (i = 0; i < this.length; i++)
+        if (this[i][srcStr]) return this[i];
+}
 
 /*  Reads all the passed @model lists into data[]
  *  data JSON looks like this
  *  data{
  *      obj { 
- *          "facility" : facNum,
- *          "dates" : [],
- *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ], 
- *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
+     *          "facility" : facNum,
+     *          "dates" : [],
+     *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ], 
+     *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
+     *          "srcKeys" : [] //Array of source key names
+     *          "weatherExists" : boolean,
+     *          "powerExists" : boolean,
+     *          "avgPower" : [] //Averaged power of source keys
  *          }//end obj
  *      getFac(facNum); Returns obj where facility = facNum, or undefined
  *      getSrc(srcStr); Returns source array in obj where sourceKey = srcStr, or undefined
  *  }//end data
  * 
+ * 
+ *  The idea is that the data is only scanned through once to break it into smaller chunks
  */
 function parseData() {
     //Check used to make sure dates arent added multiple times
@@ -71,7 +102,7 @@ function parseData() {
     }
     //Add each of the facilities
     for (i = 0; i < facilities.length; i++) {
-        data.push({ "facility": facilities[i]["plantNumber"], "weather": [], "srcKeys" : [] });
+        data.push({ "facility": facilities[i]["plantNumber"], "weather": [], "srcKeys": [], "avgPower": [] });
         data.facNums.push(facilities[i]["plantNumber"]);
     }
     for (i = 0; i < weather.length; i++) {
@@ -101,7 +132,9 @@ function parseData() {
     }
     let src;
 
-    for (let i = 0; i < power.length; i++) {
+    //Linear scan through all power readings 
+    for (let i = 0; i < power.length; i++)
+    {
         let d = data.getSrc(power[i].sourceKey);
         if (d)
         {
@@ -110,306 +143,58 @@ function parseData() {
             {
                 "dC_Power": power[i]["dC_Power"], "aC_Power": power[i]["aC_Power"], "dailyYield": power[i]["dailyYield"], "totalYield": power[i]["totalYield"]
             });
+            /*  if avgPower[length of source] != out of bounds. push a new value
+             *      else add the value to the current value
+             */
+            let a = data.getFacBySrc(power[i].sourceKey)
+            let len = d.length - 1;
+            //Automatic anomaly checking will be done here. Len is an index based on current index of a srcKey array being worked on
+            if (a.avgPower.length < d.length)
+            {
+                let ac = d[len].aC_Power;
+                let dc = d[len].dC_Power;
+                let day = d[len].dailyYield;
+                if (ac < 0) ac = 0; //Below 0 means something went wrong and there was no reading
+                if (dc < 0) dc = 0;
+                if (day < 0) day = 0;
+
+                a.avgPower.push({ "avgDC" : dc, "avgAC" : ac, "avgDaily" : day });
+            }
+            else
+            {
+                let ac = d[len].aC_Power;
+                let dc = d[len].dC_Power;
+                let day = d[len].dailyYield;
+                if (ac < 0) ac = 0; //Below 0 means something went wrong and there was no reading
+                if (dc < 0) dc = 0;
+                if (day < 0) day = 0;
+                a.avgPower[len]["avgAC"] += ac;
+                a.avgPower[len]["avgDC"] += dc;
+                a.avgPower[len]["avgDaily"] += day;
+            }
         }
+        //Average out each facilities avgPower array
         if (!dateAdded && src == power[i].sourceKey)
         {
             data.dates.push(power[i].dateAndTime);
         }
     }
+    for (index = 0; index < facilities.length; index++)
+    {
+        let facNum = data.facNums[index];
+        let fac = data.getFac(facNum);
+        if (fac)//&& fac.avgPower.lengh > 0)
+        {
+            let avgLen = fac.srcKeys.length; //22
+            for (i = 0; i < fac.avgPower.length; i++)
+            {
+                fac.avgPower[i]["avgAC"] /= avgLen;
+                fac.avgPower[i]["avgDC"] /= avgLen;
+                fac.avgPower[i]["avgDaily"] /= avgLen;
+            }
+        }
+    }
 }
-
-//{"plantNumber":x}
-//{"plantNumber":x,"dateAndTime":"x","ambientTemp":x,"moduleTemp":x,"irridation":x}
-//{"sourceKey":"x","dateAndTime":"x","dC_Power":x,"aC_Power":x,"dailyYield":x,"totalYield":x}
-const charts = (() =>
-{
-    let chartList = []; //Array of chart
-    let canvas;
-    let context;
-    let offSet = 50;
-    let xLabels = [];   //Array of strings for dates
-    let dayCount = 1;   //If days are over a value then a special consideration is made for the xLabel
-    let daySwitchNum = 3;   //After this many days, it just shows dates instead of time
-
-    //Reads lengths of each data point and inits a chart for it
-    const init = (id_in) =>
-    {
-        canvas = document.getElementById(id_in);
-        context = canvas.getContext("2d");
-        context.font = "15px Arial";
-        context.lineWidth = 1;
-
-        //Prefer weather readings for x axis labels. 
-        if (weather && weather.length > 0) {
-            regChart("weather");
-            populateXlabel(weather, 1);
-        } 
-        else if (power && power.length > 0)
-        {
-            let powerArrayNum = 22;
-            populateXlabel(power, powerArrayNum);
-        }
-        if (power && power.length > 0) 
-            regChart("power");
-        
-        update();
-    }
-
-    const regChart = (id_in) =>
-    {
-        chartList.push(chart(id_in));
-        chartList[chartList.length - 1].init(canvas, context);
-    }
-
-    const getChart = (id_in) =>
-    {
-        return chartList.find(ch => ch.id == id_in);
-    }
-
-    //Draws all the charts and the y axis
-    const update = () =>
-    {
-        renderAxis();
-        if (getChart("power")) { getChart("power").plotPower() }
-        if (getChart("weather")) { getChart("weather").plotWeather(); }
-    }
-
-    const populateXlabel = (arr, step) =>
-    {
-        for (i = 0; i < arr.length; i += step)
-        {
-            let text = arr[i]["dateAndTime"];
-            var n = text.indexOf("T");
-            if (text.substring(n + 1) == "00:00:00")    //Midnight
-            {
-                dayCount++;
-            }
-            if (text.substring(n + 4, n + 6) == "00")    //even hour
-            {
-                xLabels.push([text.substring(5, n), text.substring(n + 1, n + 6)]);
-            }
-        }
-        if (dayCount > daySwitchNum)
-        {
-            let temp = [];
-            for (i = 0; i < xLabels.length; i++)
-            {
-                if (!temp.find(x => x[0] == xLabels[i][0]))
-                    temp.push([xLabels[i][0], xLabels[i][0]]);
-            }
-            xLabels = temp.slice(0);
-        }
-    }
-
-    //Draws y axis with date stamps
-    const renderAxis = () =>
-    {
-        context.beginPath();
-        //Draw the x axis line
-        context.fillRect(offSet, canvas.clientHeight - offSet, canvas.clientWidth, 3);  //lineTo() is blurry,
-        context.stroke();
-        //Y axis line
-        context.fillRect(offSet, 0, 3, canvas.clientHeight - offSet);
-        context.stroke();
-
-        //Draw stamps for DateTime data
-        //Not every 15 minute interval is accounted for in each day
-        let y = canvas.clientHeight;
-
-        if (xLabels.length == 0) { xLabels.push("No Data") }
-        let xStep = (canvas.clientWidth - (offSet * 2)) / (xLabels.length);
-        if (dayCount > daySwitchNum) { dayCount = 1; }
-
-
-        for (i = 0; i < xLabels.length; i += dayCount)
-        {
-            let x = (xStep * i) + offSet;
-            draw45DegreeText(xLabels[i][1], x, y);
-        }
-    }
-
-    //Actually -45 degrees
-    //Draws slanted text at the x, y coored passed
-    const draw45DegreeText = (text, x, y) =>
-    {
-        context.save();
-        let r = (-45 * Math.PI / 180);
-        context.translate(x - 13, y);
-        context.rotate(r);
-        context.fillText(text, 0, 0);
-        context.restore();
-        context.fillRect(x, y - 50, 4, 10);
-    }
-
-    return {init, getChart, update};
-})();
-
-//Factory for a graph
-//Allows multiple graphs to be drawn to a single canvas 
-const chart = (chartName) =>
-{
-    let id = chartName;
-    let xScale = 1;
-    let yScale = 1;
-
-    let context;
-    let canvas;
-
-    let chartW;
-    let chartH;
-    let offSet = 50;        //Space for the x, y axis
-
-    //For now the idea is to graph Irradation along the timeframe of the first day
-    const init = (can, ctxt) =>
-    {
-        canvas = can;
-        context = ctxt;
-        //context.strokeStyle = "#000000"; // Grid line color
-        //context.beginPath();
-
-        chartW = canvas.clientWidth - (offSet * 2);
-        chartH = canvas.clientHeight - offSet;
-    }
-
-    //Draw power data
-    const plotPower = () =>
-    {
-        xScale = chartW / power.length;
-
-       
-    }
-
-    //Draws weather data
-    //This basically needs to be completely rewritten
-    const plotWeather = () =>
-    {
-        xScale = chartW / weather.length;
-
-        //Split the data points into seperate facilities
-        let fac = [];
-        for (i = 0; i < facilities.length; i++) //facilities length is by default always 2 for gui
-        {
-            let plant = facilities[i]["plantNumber"];
-            let ap = [[xScale + offSet + 4, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale , plantNum}
-            let mp = [[xScale + offSet + 4, 0], [0, 0], "#ffa500", -1]; //#ffa500
-            let rp = [[xScale + offSet + 4, 0], [0, 0], "#999900", -1];
-
-            let f = [ap, mp, rp, plant];
-            fac.push(f);
-        }
-        
-        let ambPoint = [[xScale + offSet + 4, 0], [0, 0], "#ff0000"]; //{ [lastX, lastY], [nowX, nowY], color, yscale }
-        let modPoint = [[xScale + offSet + 4, 0], [0, 0], "#ffa500"]; //#ffa500
-        let radPoint = [[xScale + offSet + 4, 0], [0, 0], "#999900"];
-
-        let maxAmb = -1;
-        let maxMod = -1;
-        let maxRad = -1;
-
-        let facNum = 0;
-        //"ambientTemp" ,"moduleTemp", "irradiation"
-        //Find the max values for each point type
-        for (i = 0; i < weather.length; i++)                    //Linear scan to get setup data. y scaling
-        {
-            maxAmb = (maxAmb > weather[i]["ambientTemp"]) ? maxAmb : weather[i]["ambientTemp"];
-            maxMod = (maxMod > weather[i]["moduleTemp"]) ? maxMod : weather[i]["moduleTemp"];
-            maxRad = (maxRad > weather[i]["irradiation"]) ? maxRad : weather[i]["irradiation"];
-
-        }
-        //FACILITY SET Y SCALE
-        for (i = 0; i < facilities.length; i++) {
-            fac[i][0][3] = chartH / maxAmb / 2;
-            fac[i][1][3] = chartH / maxMod / 2;
-            fac[i][2][3] = chartH / maxRad / 3;
-        }
-        let maxC = (maxAmb > maxMod) ? maxAmb : maxMod;
-        let maxCScale = chartH / 50 / 2;
-        let radScale = chartH / 0.5 / 3;
-
-        console.log("Max Ambient " + maxAmb);
-        console.log("Max Module  " + maxMod);
-        console.log("Max Rad     " + maxRad);
-
-        ambPoint[3] = chartH / maxC / 2; //These scale values to the chart height
-        modPoint[3] = chartH / maxC / 2;
-        radPoint[3] = chartH / maxRad / 3;
-
-        //drawLabel(ambPoint[2], "Ambient Temp", chartH - maxAmb * ambPoint[3], "right"); //These are close
-        //drawLabel(modPoint[2], "Module Temp", chartH - maxMod * modPoint[3], "right");
-        //drawLabel(radPoint[2], "Irradiation", chartH - maxRad * radPoint[3], "right");
-
-        //Draw 5 labels for temperature on right side
-        for (i = 1; i < 6; i++)
-        {
-            drawLabel("#ff5200", (i * 10 + " C"), chartH - (i * 10) * maxCScale, "right"); //Temp increments of 25
-        }
-
-        for (i = 1; i < 3; i++)
-        {
-            drawLabel("#999900", (i * 0.5 + " Rad"), chartH - (i * 0.5) / 2 * radScale, "left");
-        }
-
-        //Set first values
-        ambPoint[0][1] = chartH - (weather[0]["ambientTemp"] * ambPoint[3]);
-        modPoint[0][1] = chartH - (weather[0]["moduleTemp"] * modPoint[3]);
-        radPoint[0][1] = chartH - (weather[0]["irradiation"] * radPoint[3]);
-
-        for (i = 0; i < weather.length; i++)
-        {
-            setPoint(ambPoint, i, weather[i]["ambientTemp"]);
-            plotPoint(ambPoint);
-
-            setPoint(modPoint, i, weather[i]["moduleTemp"]);
-            plotPoint(modPoint);
-
-            setPoint(radPoint, i, weather[i]["irradiation"]);
-            plotPoint(radPoint);
-        }
-    }
-
-    //Draws a colored line to represent a data point and its highest value
-    //Drawn at the y coord of the highest value
-    //Have 50 pixels to work with, names need to be short
-    //color = color of line, name = text drawn, yVal is height, left or right side
-    //Text is always black
-
-    const drawLabel = (color, name, yVal, leftOrRight) =>
-    {
-        let xVal = 0;
-        if (leftOrRight == "left")
-            xVal = 0;
-        if (leftOrRight == "right")
-            xVal = chartW + offSet;
-
-        context.beginPath();
-        context.fillStyle = "#000000";
-        console.log(context.strokeStyle);
-        context.fillText(name, xVal, yVal + 15);
-
-        context.fillStyle = color;
-        context.fillRect(xVal, yVal, offSet, 3); //Draws the line
-        context.stroke();
-    }
-
-    const setPoint = (p, i, value) =>
-    {
-        p[1] = p[0];
-        p[0] = [i * xScale + offSet, chartH - value * p[3]]
-    }
-
-    const plotPoint = (p) =>
-    {
-        context.beginPath();
-        context.strokeStyle = p[2];         //Set color
-        context.moveTo(p[0][0], p[0][1]);   //Start at point[0]
-        context.lineTo(p[1][0], p[1][1]);   //Draw line to point[1]
-        context.stroke();
-    }
-    
-    return { init, plotWeather, plotPower, id};
-};
-// Write your JavaScript code.
-
 //######################################################################################################################################
 //######################################################################################################################################
 //######################################################################################################################################
@@ -431,12 +216,13 @@ const chart = (chartName) =>
  *
  */
 
-const chart1 = (() =>
+const charts = (() =>
 {
     let canvas;
     let context;
     let offSet = 50;
     let xLabel = [];
+    let legend = [];
     let chartH;          
     let chartW;  
     let dayCount = 1;
@@ -448,8 +234,6 @@ const chart1 = (() =>
     let showAmbientData = -1;
     let showModuleData = showAmbientData;
     let showIrridData = showAmbientData;
-
-    let showPowerData = -1;
 
     const init = (id) =>
     {
@@ -463,7 +247,6 @@ const chart1 = (() =>
         showAmbientData = data.weatherExists;
         showModuleData = showAmbientData;
         showIrridData = showAmbientData;
-        showPowerData = data.powerExists;
 
         popXlabel();
         draw();
@@ -472,9 +255,26 @@ const chart1 = (() =>
     //Draws the chart
     const draw = () =>
     {
+        legend = [];
         context.clearRect(0, 0, canvas.width, canvas.height);
         renderXAxis();
         plotData();
+        drawLegend();
+    }
+
+    const drawLegend = () =>
+    {
+        //{["name", "color value"]} 15pt arial
+        let x = chartW + 50 + 50;
+        for (i = 0; i < legend.length; i++)
+        {
+            let txtWidth = context.measureText(legend[i][0]).width;
+
+            context.beginPath();
+            context.fillStyle = legend[i][1];
+            context.fillText(legend[i][0], x - txtWidth, (i+2) * 15);
+            context.stroke();
+        }
     }
 
     const renderXAxis = () =>
@@ -537,15 +337,33 @@ const chart1 = (() =>
 
     const plotData = () =>
     {
-        if (showAmbientData || showModuleData || showIrridData)
+        if ((showAmbientData || showModuleData || showIrridData) && document.getElementById("weatherGraph").checked)
             plotWeather();
 
-        if (showPowerData)
+        if (document.getElementById("powerGraph").checked)
             plotPower();
     }
 
     const plotWeather = () =>
     {
+        legend.push(["Ambient Temp", "#ff0000"]);
+        legend.push(["Module Temp", "#ffa500"]);
+        legend.push(["Irradiation", "#999900"]);
+
+        //If power graph isnt being shown, display weather using full chart
+        if (!document.getElementById("powerGraph").checked)
+        {
+            ambientScale = 1;
+            moduleScale = 1;
+            radiateScale = 2;
+        }
+        else
+        {
+            ambientScale = 2;
+            moduleScale = 2;
+            radiateScale = 3;
+        }
+
         for (index = 0; index < data.facNums.length; index++)//For each facility. 
         {
             let currPlant = data.facNums[index];
@@ -556,10 +374,10 @@ const chart1 = (() =>
 
             let xScale = chartW / d.weather.length;
 
-            //Setup initial point values
-            let ap = [[offSet, 0], [0, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale}
-            let mp = [[offSet, 0], [0, 0], "#ffa500", -1];
-            let rp = [[offSet, 0], [0, 0], "#999900", -1];
+            //Setup initial points
+            let ap = [[0, 0], [offSet, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale}
+            let mp = [[0, 0], [offSet, 0], "#ffa500", -1];
+            let rp = [[0, 0], [offSet, 0], "#999900", -1];
             let maxC;
 
             let maxAp = -1;
@@ -582,23 +400,23 @@ const chart1 = (() =>
             rp[3] = chartH / maxRp / radiateScale;
 
             //Set initial y coord
-            ap[0][1] = chartH - (d.weather[0]["ambientTemp"] * ap[3]);
-            mp[0][1] = chartH - (d.weather[0]["moduleTemp"] * mp[3]);
-            rp[0][1] = chartH - (d.weather[0]["irradiation"] * rp[3]);
+            ap[1][1] = chartH - (d.weather[0]["ambientTemp"] * ap[3]);
+            mp[1][1] = chartH - (d.weather[0]["moduleTemp"] * mp[3]);
+            rp[1][1] = chartH - (d.weather[0]["irradiation"] * rp[3]);
 
             for (i = 0; i < d.weather.length; i++)
             {
                 //Draw the values
                 if (showAmbientData) {
-                    setWPoint(ap, i, d.weather[i]["ambientTemp"], xScale);
+                    setPoint(ap, i, d.weather[i]["ambientTemp"], xScale);
                     plotPoint(ap);
                 }
                 if (showModuleData) {
-                    setWPoint(mp, i, d.weather[i]["moduleTemp"], xScale);
+                    setPoint(mp, i, d.weather[i]["moduleTemp"], xScale);
                     plotPoint(mp);
                 }
                 if (showIrridData) {
-                    setWPoint(rp, i, d.weather[i]["irradiation"], xScale)
+                    setPoint(rp, i, d.weather[i]["irradiation"], xScale)
                     plotPoint(rp)
                 }
                 
@@ -636,6 +454,24 @@ const chart1 = (() =>
     //This is very similar to the weather plotting function
     const plotPower = () =>
     {
+        legend.push(["AC Power", "#AA00FF"]);
+        legend.push(["DC Power", "#0000FF"]);
+
+        let maxPower = 10000;
+        let showAveraged = document.getElementById("showAveragedPower").checked;
+        let maxAc = -1;
+        let maxDc = -1;
+        let powerScale;
+
+        if (!document.getElementById("weatherGraph").checked)
+        {
+            powerScale = 1;
+        }
+        else
+        {
+            powerScale = 2;
+        }
+
         for (index = 0; index < data.facNums.length; index++)//For each facility. 
         {
             let currPlant = data.facNums[index];
@@ -644,49 +480,108 @@ const chart1 = (() =>
             if (d.srcKeys.length < 1) continue;; //No data to show for this plant
             if (!document.getElementById("showPlant" + currPlant).checked) continue;
 
-            let xScale = chartW / d.srcKeys[0].length; //Scale everything to this value
+            let s = d.srcKeys[0];
+            let xScale = chartW / d[s].length; //Scale everything to this value
 
-            let ac = [[offSet, 0], [0, 0], "#AA00FF", -1]; //These values go about 400-800
-            let dc = [[offSet, 0], [0, 0], "#0000FF", -1]; //These values go about 6k -8k
-            let maxAc = -1;
-            let maxDc = -1;
+            //Start halfway up if scale = 2, or bottom
+            let ac = [[0, 0], [offSet, chartH / powerScale], "#AA00FF", -1]; //These values go about 400-800
+            let dc = [[0, 0], [offSet, chartH / powerScale], "#0000FF", -1]; //These values go about 6k -8k
 
-            //Linear scan for scaling setup
-            for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+            if (!showAveraged)
             {
-                let sourceStr = d.srcKeys[srcIndex];
-                for (i = 0; i < d[sourceStr].length; i++)
+                //Linear scan for scaling setup
+                for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
                 {
-                    maxAc = (maxAc > d[sourceStr][i]["aC_Power"]) ? maxAc : d[sourceStr][i]["aC_Power"];
-                    maxDc = (maxDc > d[sourceStr][i]["dC_Power"]) ? maxDc : d[sourceStr][i]["dC_Power"];
+                    let sourceStr = d.srcKeys[srcIndex];
+                    for (i = 0; i < d[sourceStr].length; i++)
+                    {
+                        maxAc = (maxAc > d[sourceStr][i]["aC_Power"]) ? maxAc : d[sourceStr][i]["aC_Power"];
+                        maxDc = (maxDc > d[sourceStr][i]["dC_Power"]) ? maxDc : d[sourceStr][i]["dC_Power"];
+                    }
+                }
+
+                //DC power is always much higher. These values are the max value on the power graph
+                maxDc = Math.ceil(maxDc / 1000) * 1000;
+                maxAc = Math.ceil(maxAc / 100) * 100;
+                maxPower = (maxDc > maxAc) ? maxDc : maxAc;
+
+                //
+                ac[3] = dc[3] = chartH / powerScale / maxPower;
+
+                //Not minusing chart here so these values are on top if showing weather
+                ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
+                dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
+
+                //Plot
+                let yOffSet = 0;
+                if (document.getElementById("weatherGraph").checked) yOffSet = chartH / powerScale;
+                for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+                {
+                    let sourceStr = d.srcKeys[srcIndex];
+ 
+                    //Initial values for this source
+                    ac[0][1] = d[sourceStr][0]["aC_Power"] * ac[3];
+                    dc[0][1] = d[sourceStr][0]["dC_power"] * dc[3];
+
+                    for (i = 0; i < d[sourceStr].length; i++)
+                    {
+                        setPoint(ac, i, d[sourceStr][i]["aC_Power"], xScale, yOffSet);
+                        plotPoint(ac);
+
+                        setPoint(dc, i, d[sourceStr][i]["dC_Power"], xScale, yOffSet);
+                        plotPoint(dc);
+                    }
                 }
             }
-            //DC power is always much higher
-            maxDc = Math.ceil(maxDc / 1000) * 1000;
-            maxAc = Math.ceil(maxAc / 100) * 100;
-
-            ac[3] = chartH / maxAc / 2;
-            dc[3] = chartH / maxDc / 3;
-
-            //See what they look like just at 0
-            //Not minusing chart here so these values are on top
-            ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
-            dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
-
-            //Plot
-            for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+            else //Show averaged
             {
-                let sourceStr = d.srcKeys[srcIndex];
-                console.log(d[sourceStr][50]["aC_Power"] * ac[3]);
-                for (i = 0; i < d[sourceStr].length; i++) //For each item in d[sourceKey]
+                //Linear scan for scaling setup
+                for (i = 0; i < d.avgPower.length; i++) //For each source key in facility
                 {
-                    setPPoint(ac, i, d[sourceStr][i]["aC_Power"], xScale);
+                    maxAc = (maxAc > d.avgPower[i]["avgAC"]) ? maxAc : d.avgPower[i]["avgAC"];
+                    maxDc = (maxDc > d.avgPower[i]["avgDC"]) ? maxDc : d.avgPower[i]["avgDC"];
+                }
+                //DC power is always much higher. These values are the max value on the power graph
+                maxDc = Math.ceil(maxDc / 1000) * 1000;
+                maxAc = Math.ceil(maxAc / 100) * 100;
+                maxPower = (maxDc > maxAc) ? maxDc : maxAc;
+
+                ac[3] = dc[3] = chartH / powerScale / maxPower;
+
+                //Not minusing chart here so these values are on top
+                ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
+                dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
+
+                //Plot
+                let yOffSet = 0;
+                if (document.getElementById("weatherGraph").checked) yOffSet = chartH / powerScale;
+                for (i = 0; i < d.avgPower.length; i++) //For each source key in facility
+                {
+                    setPoint(ac, i, d.avgPower[i]["avgAC"], xScale, yOffSet);
                     plotPoint(ac);
 
-                    setPPoint(dc, i, d[sourceStr][i]["dC_Power"], xScale);
+                    setPoint(dc, i, d.avgPower[i]["avgDC"], xScale, yOffSet)
                     plotPoint(dc);
                 }
+            }
+        }
+        drawPowerLabel(maxPower, powerScale);
+    }
 
+    //Weather labels are always on bottom, but power charts move around
+    const drawPowerLabel = (maxPower, powerScale) =>
+    {
+        if (document.getElementById("powerGraph").checked)
+        {
+            let yOffSet = 0;
+            if (document.getElementById("weatherGraph").checked) yOffSet = chartH / powerScale;
+
+            //Draw 5 labels for temperature on right side
+            let val = (maxPower + 1000) / 1000;
+            let yScale = chartH / powerScale / maxPower;
+            for (i = 1; i < val; i++)
+            {
+                drawLabel("#0000ff", (i * 1000) + " kW", (chartH - yScale * i * 1000) - yOffSet, "left");
             }
         }
     }
@@ -707,19 +602,16 @@ const chart1 = (() =>
         context.stroke();
     }
 
-    //Shifts the points left for easier line drawing
-    const setWPoint = (p, i, value, xScale) =>
+    /*  p - the point being worked ont
+     *  i - expects this to be a % of total length: i/array.length, no offsets
+     *  value - actual value of point
+     *  xScale - x value in pixels between each point
+     */ 
+    const setPoint = (p, i, value, xScale, yOffSet = 0) =>
     {
-        p[1] = p[0];
+        p[0] = p[1];
         if (value < 0) value = 0;
-        p[0] = [i * xScale + offSet, chartH - value * p[3]];
-    }
-
-    const setPPoint = (p, i, value, xScale) =>
-    {
-        p[1] = p[0];
-        if (value < 0) value = 0;
-        p[0] = [i * xScale + offSet, chartH  / 2 - value * p[3]];
+        p[1] = [i * xScale + offSet, (chartH - value * p[3]) - yOffSet];
 
     }
 

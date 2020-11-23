@@ -170,7 +170,7 @@
 
                     <div class="checkBoxContainer">
                         <label for="@idLabel">Plant @fc.PlantNumber</label>
-                        <input type="checkbox" id="@idLabel" name="@idLabel" onclick="chart1.draw();" checked />
+                        <input type="checkbox" id="@idLabel" name="@idLabel" onclick="charts.draw();" checked />
                     </div>
                 }
             }
@@ -179,9 +179,28 @@
                 string idLabel = "showPlant" + @Model.plantNum;
                 <div class="checkBoxContainerSmall" style="display:none;">
                     <label for="@idLabel">Show @Model.plantNum</label>
-                    <input type="checkbox" id="@idLabel" name="@idLabel" onclick="chart1.draw();" checked />
+                    <input type="checkbox" id="@idLabel" name="@idLabel" onclick="charts.draw();" checked />
                 </div>
             }
+            if (@Model.powerReadings.Count() > 0 || @Model.weatherReadings.Count() > 0)
+            {
+                <div class="checkBoxContainerSmall" id="weatherGraphBox">
+                    <label for="weatherGraph">Weather Graph</label>
+                    <input type="checkbox" id="weatherGraph" name="weatherGraph" onclick="charts.draw();" checked />
+                </div>
+                <div class="checkBoxContainerSmall" id="powerGraphBox">
+                    <label for="powerGraph">Power Graph</label>
+                    <input type="checkbox" id="powerGraph" name="powerGraph" onclick="charts.draw();" checked />
+                </div>
+            }
+            if (@Model.powerReadings.Count() > 0)
+            {
+                <div class="checkBoxContainerSmall">
+                    <label for="showAveragedPower">Show Averaged Power</label>
+                    <input type="checkbox" id="showAveragedPower" name="showAveragegPower" onclick="charts.draw();" checked />
+                </div>
+            }
+
         }
     </div>
 
@@ -198,5 +217,5 @@
         </script>
     }
 
-    <script>parseData(); console.log(data); chart1.init("graph");</script>
+    <script>onReady()</script>
 }
