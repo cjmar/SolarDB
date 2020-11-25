@@ -1,11 +1,13 @@
 ﻿@model SolarDB.ViewModel.SolarViewModel
 
 <script type="text/javascript">
-    var facilities = @Html.Raw(Json.Serialize(@Model.facilities));
-    var weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
-    var power = @Html.Raw(Json.Serialize(@Model.powerReadings));
-    var powerSource = @Html.Raw(Json.Serialize(Model.powerSources));
-    var plantSelect = @Model.plantNum;
+    parseData(
+        @Html.Raw(Json.Serialize(@Model.facilities)),
+        @Html.Raw(Json.Serialize(@Model.weatherReadings)),
+        @Html.Raw(Json.Serialize(@Model.powerReadings)),
+        @Html.Raw(Json.Serialize(Model.powerSources)),
+        @Model.plantNum
+    );
 </script>
 
 @{
@@ -19,15 +21,25 @@
         height: 100%;
     }
 
-    #genericContainer {
+    .genericContainer {
         height: 100%;
         float: left;
+        text-align:center;
+    }
+
+    .inlineDiv
+    {
+        display:inline-block;
+        text-align:center;
+        margin:0 auto;
     }
 
     #formDiv {
+        width:auto;
         border: solid 1px black;
         float: left;
         padding: 2px;
+        text-align:center;
     }
 
     #textBox {
@@ -36,20 +48,21 @@
         padding: 2px;
     }
 
-    .checkBoxContainer {
+    .checkBoxContainer{
         border: solid black 1px;
+        display:inline-block;
         float: left;
         padding: 2px;
         margin: 1px;
         margin-bottom: 3px;
     }
 
-    .checkBoxContainerSmall
+    .checkBoxContainerCenter 
     {
         border: solid black 1px;
-        float:left;
         margin:1px;
-        padding:1px;
+        padding: 2px;
+        margin-bottom: 3px;
     }
 
     .checkBoxList {
@@ -99,23 +112,25 @@
 
 <div id="formDiv">
     <form method="post" action="">
-        <label for="DateStart">Start Date</label>
+        <label for="dateStart">Start Date</label>
         <input type="date" name="startDate" value="@Model.dateStart.ToString("yyyy-MM-dd")" />
 
-        <label for="DateEnd">End Date</label>
+        <label for="dateEnd">End Date</label>
         <input type="date" name="endDate" value="@Model.dateEnd.Date.ToString("yyyy-MM-dd")" />
         <br />
-        <div class="checkBoxContainer">
-            <label for="showWeather">Load Weather Readings</label>
-            <input type="checkbox" id="showWeatherReading" name="showWeather" onclick="checkboxValue('showWeatherReading')" />
-        </div>
-        <div class="checkBoxContainer" style="float:right;">
-            <label for="showPower">Load Power Readings</label>
-            <input type="checkbox" id="showPowerReading" name="showPower" onclick="checkboxValue('showPowerReading')" />
+        <div class="inlineDiv">
+            <div class="checkBoxContainer">
+                <label for="showWeather">Load Weather Readings</label>
+                <input type="checkbox" id="showWeatherReading" name="showWeather" value="false" onchange="toggleCheckbox('showWeatherReading')" />
+            </div>
+            <div class="checkBoxContainer">
+                <label for="showPower">Load Power Readings</label>
+                <input type="checkbox" id="showPowerReading" name="showPower" value="false" onchange="toggleCheckbox('showPowerReading');"/>
+            </div>
         </div>
         <div class="clear"></div>
-        <label for="PlantNum">Plant</label>
-        <select id="PlantNum" name="plantNum">
+        <label for="PlantNum" style="float:left;">Plant</label>
+        <select id="PlantNum" style="float:left;" name="plantNum">
             @{
                 foreach (var fc in Model.facilities)
                 {
@@ -149,73 +164,18 @@
 
 <!--
     Main content Shown if post
-    Saves elements between page loads
+    Saves selections between page loads
 -->
 @if (Context.Request.Method == "POST")
 {
     <hr />
-    <div id="genericContainer">
+    <div class="genericContainer">
         <canvas id="graph" width="800" height="500">Your browser does not support the canvas element.</canvas>
     </div>
 
-    <div class="genericContainer">
-        @{
-
-            if (Model.plantNum == -1)   //Show all ticks if load multiple plants
-            {
-                <p>Select which specific plant data to display.</p>
-                foreach (var fc in Model.facilities)
-                {
-                    string idLabel = "showPlant" + @fc.PlantNumber;
-
-                    <div class="checkBoxContainer">
-                        <label for="@idLabel">Plant @fc.PlantNumber</label>
-                        <input type="checkbox" id="@idLabel" name="@idLabel" onclick="charts.draw();" checked />
-                    </div>
-                }
-            }
-            else
-            {
-                string idLabel = "showPlant" + @Model.plantNum;
-                <div class="checkBoxContainerSmall" style="display:none;">
-                    <label for="@idLabel">Show @Model.plantNum</label>
-                    <input type="checkbox" id="@idLabel" name="@idLabel" onclick="charts.draw();" checked />
-                </div>
-            }
-            if (@Model.powerReadings.Count() > 0 || @Model.weatherReadings.Count() > 0)
-            {
-                <div class="checkBoxContainerSmall" id="weatherGraphBox">
-                    <label for="weatherGraph">Weather Graph</label>
-                    <input type="checkbox" id="weatherGraph" name="weatherGraph" onclick="charts.draw();" checked />
-                </div>
-                <div class="checkBoxContainerSmall" id="powerGraphBox">
-                    <label for="powerGraph">Power Graph</label>
-                    <input type="checkbox" id="powerGraph" name="powerGraph" onclick="charts.draw();" checked />
-                </div>
-            }
-            if (@Model.powerReadings.Count() > 0)
-            {
-                <div class="checkBoxContainerSmall">
-                    <label for="showAveragedPower">Show Averaged Power</label>
-                    <input type="checkbox" id="showAveragedPower" name="showAveragegPower" onclick="charts.draw();" checked />
-                </div>
-            }
-
-        }
+    <div class="genericContainer" style="width:25%;margin-left:3px;">
+        <div class="genericContainer" id="GUIcontrol"></div>
     </div>
 
-    if (@Model.showWeather)
-    {
-        <script>
-            setCheckbox("showWeatherReading", true);
-        </script>
-    }
-    if (@Model.showPower)
-    {
-        <script>
-            setCheckbox("showPowerReading", true);
-        </script>
-    }
-
-    <script>onReady()</script>
+    <script>onReadyPOST()</script>
 }
