@@ -14,6 +14,11 @@ using SolarDB.ViewModel;
 
 namespace SolarDB.Controllers
 {
+        /*  
+        *  Input:   None
+        *  Output:  None
+        *  Desc:    Information object for the selection form in info.cshtml
+        */
     public class SelectTarget
     {
         public DateTime dateStart { get; set; } //  Shows the first day by default
@@ -22,6 +27,11 @@ namespace SolarDB.Controllers
         public bool showWeather { get; set; }   //  Show weather readings
         public bool showPower { get; set; }     //  Show power readings
 
+        /*  
+        *  Input:   None
+        *  Output:  None
+        *  Desc:    Default constructor with default values found in form
+        */
         public SelectTarget()
         {
             dateStart = DateTime.Parse("05-15-2020");
@@ -31,6 +41,11 @@ namespace SolarDB.Controllers
             showPower = false;
         }
 
+        /*  
+        *  Input:   None
+        *  Output:  None
+        *  Desc:    Prints values to the debug console of the server
+        */
         public void printDebug()
         {
             System.Diagnostics.Debug.WriteLine("dateStart: " + dateStart.ToString());
@@ -41,6 +56,7 @@ namespace SolarDB.Controllers
         }
     }
 
+
     public class SolarController : Controller
     {
         private readonly SolarContext _context;
@@ -50,7 +66,12 @@ namespace SolarDB.Controllers
             _context = context;
         }
 
-        // GET: Solar
+        /*  
+    *  Input:   None
+    *  Output:  Tas, View
+    *  Desc:    GET: /Solar
+    *           Retrieves info.cshtml page with default selection
+    */
         public async Task<IActionResult> Info()
         {
             //Get all Facilities for dropdown 
@@ -60,7 +81,12 @@ namespace SolarDB.Controllers
             return View(rtn);
         }
 
-        // POST: Solar/Info
+        /*  
+        *  Input:   None (Reads HTML header data)
+        *  Output:  Task, View
+        *  Desc:    POST: /Solar/Info
+        *           Reads form data and retrieves page including information based on selection
+        */
         [HttpPost, ActionName("Info")]
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> PostInfo()
@@ -83,13 +109,11 @@ namespace SolarDB.Controllers
             return View(rtn);
         }
 
-        /*  Creates a SolarViewModel from database
-         * 
-         *  Expects parameters used to select database entries
-         *
-         *      
-         *  Returns a SolarViewModel filled with data based on SelectTarget parameters
-         */
+        /*  
+        *  Input:   SelectTarget object
+        *  Output:  Task, SolarViewModel object
+        *  Desc:    Creates SolarViewModel object based on parameters in info object
+        */
         private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
         {
             //SVM default values are empty List<T>. Dates and all facilities are grabbed for GUI
@@ -124,10 +148,11 @@ namespace SolarDB.Controllers
             return rtn;
         }
 
-        /*  Returns a Task<List<PowerReading>> based on DateTime, Plant number (or all), and power source
-         *              within a date period
-         * 
-         */
+        /*  
+        *  Input:   SelectTarget object
+        *  Output:  Task, List
+        *  Desc:    Queries database for list of power readings based on target parameters
+        */
         private async Task<List<SVMPower>> PopulatePowerReadings(SelectTarget info)
         {
             //Empty string means get all sources
@@ -152,10 +177,11 @@ namespace SolarDB.Controllers
             }   
         }
 
-        /*  Returns a Task<List<WeatherReading>> based on DateTime and Plant number (or all)
-         *              within a date period
-         * 
-         */
+        /*  
+        *  Input:   SelectTarget object
+        *  Output:  Task, List
+        *  Desc:    Queries database for weather readings based on SelectTarger parameters
+        */
         private async Task<List<SVMWeather>> PopulateWeatherReadings(SelectTarget info)
         {
             //All WeatherReadings
@@ -180,6 +206,11 @@ namespace SolarDB.Controllers
          * 
          * 
          */
+        /*  
+        *  Input:   SelectTarget object
+        *  Output:  Task, List
+        *  Desc:    Queries database for power sources based on SelectTarget parameters
+        */
         private async Task<List<SVMPowerSource>> PopulatePowerSources(SelectTarget info)
         {
             //Empty string means get all sources
@@ -199,6 +230,12 @@ namespace SolarDB.Controllers
             }
         }
 
+        /*  
+        *  Input:   String
+        *  Output:  Boolean
+        *  Desc:    Reads string, Returns true or false if string is equal to "true"
+        *           Used for parsing checkbox value parameters from forms
+        */
         private bool parseCheckBox(string s)
         {
             if (s != null && s.Equals("true"))
@@ -208,6 +245,12 @@ namespace SolarDB.Controllers
             return false;
         }
 
+        /*  
+        *  Input:   String
+        *  Output:  Integer
+        *  Desc:    Converts string to an integer, on failure returns -1
+        *           Expected to be used for parsing Plant Number from form data
+        */
         private int parsePlantNumber(string s)
         {
             if (!int.TryParse(s, out _))    //If s cannot be parsed into an int, return -1
@@ -215,11 +258,6 @@ namespace SolarDB.Controllers
                 return -1;
             }
             return int.Parse(s);
-        }
-
-        private bool WeatherReadingExists(int id)
-        {
-            return _context.WeatherReadings.Any(e => e.WeatherReadingID == id);
         }
     }
 }

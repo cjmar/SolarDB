@@ -47,14 +47,11 @@ namespace SolarDB.Models
             }
         }
 
-        /*  Expects a csv file containing weather sensor data, in the Data folder
-         *  Format: DATE_TIME,PLANT_ID,SOURCE_KEY,AMBIENT_TEMPERATURE,MODULE_TEMPERATURE,IRRADIATION
-         *  
-         *  Reads one table into database
-         *      WeatherReading : DATE_TIME, PLANT_ID, AMBIENT_TEMPERATURE, MODULE_TEMPERATURE, IRRADATION
-         *      
-         *  Call once per file
-         */
+        /*  
+        *  Input:   String file name, SolarContext database
+        *  Output:  None
+        *  Desc:    Reads weather sensor data from file_name into database
+        */
         static void ReadInWeatherSensorData(string file_in, SolarContext context)
         {
             try
@@ -113,15 +110,11 @@ namespace SolarDB.Models
             }
         }
 
-        /*  Expects a csv file containing Power Generation data, in the Data folder
-         *  Format: DATE_TIME,PLANT_ID,SOURCE_KEY,DC_POWER,AC_POWER,DAILY_YIELD,TOTAL_YIELD
-         *  
-         *  Reads two tables into database
-         *      PowerSource  : SOURCE_KEY, PLANT_ID
-         *      PowerReading : SOURCE_KEY, DATE_TIME, DC_POWER, AC_POWER, DAILY_YIELD, TOTAL_YIELD
-         *      
-         *  Call once per file
-         */
+        /*  
+        *  Input:   String file_name, SolarContext database
+        *  Output:  None
+        *  Desc:    Reads power reading data from file into database
+        */
         static void ReadInGenerationData(string file_in, SolarContext context)
         {
             try
@@ -198,16 +191,11 @@ namespace SolarDB.Models
             }
         }
 
-        /*  Called from ReadInWeatherSensorData
-         *  Format: DATE_TIME,PLANT_ID,SOURCE_KEY,AMBIENT_TEMPERATURE,MODULE_TEMPERATURE,IRRADIATION
-         *  
-         *  Reads one table into database
-         *  Expects: num - Plant number
-         *           context - Database Context
-         *           
-         *  There are very little facility records    
-         *  Checks the facility doesnt already exist, adds if it does not
-         */
+        /*  
+        *  Input:   string plant number, SolarContext database
+        *  Output:  None
+        *  Desc:    Reads in plan numbers into database, called from ReadInWeatherSensorData()
+        */
         static void AddPlantNumber(string value, SolarContext context)
         {
             int num = int.Parse(value);
@@ -234,11 +222,13 @@ namespace SolarDB.Models
             }
         }
 
-        /*  Original CSV tables are missing large chunks of data. This method scans through the database and makes sure a record exists for each date
-         *  Values inserted are -1
-         *  This method presumes the database to be in a state where it has just been successfully seeded
-         *  
-         */
+        /*  
+        *  Input:   IServiceProvider - to get database context
+        *  Output:  None
+        *  Desc:    Original CSV files are missing large chunks of data. This function is called after database seed to add data where its datestamp is missing
+        *           This function is a bandaid and is very inefficient, modifications needs to be made to Weather/Power reading functions to more efficiently
+        *               fill in this data. On the other hand, this function is only ever ran once so that will probably never happen.
+        */
         public static void AddMissingDateStamps(IServiceProvider serviceProvider)
         {
             if(!stampFixed)
@@ -257,6 +247,11 @@ namespace SolarDB.Models
             stampFixed = true;
         }
 
+        /*  
+        *  Input:   SolarContext database
+        *  Output:  None
+        *  Desc:    Called by AddMissingDatestamps to inefficiently add in missing power readings with -1 values
+        */
         static void addMissingPower(SolarContext context)
         {
             int plant1 = 4135001;
@@ -301,6 +296,15 @@ namespace SolarDB.Models
             System.Diagnostics.Debug.WriteLine(recordsAdded + " total records were added. " + count + " total records");
         }
 
+        /*  
+        *  Input:   DateTime, DateTime, KeyValuePair<string, List>, SolarContext
+        *           DateTime fd - firstDate in CSV files
+        *           DateTime ld - lastDate in CSV files
+        *           KVP<string, List> - List to scan
+        *           SolarContext - database
+        *  Output:  int - Number of missing records found
+        *  Desc:    Scans a List found in KVP<string, list>, adds missing values to database
+        */
         static int addMissingArray(DateTime fd, DateTime ld, KeyValuePair<string, List<PowerReading>> s, SolarContext context)
         {
             DateTime currDate = fd;
@@ -348,6 +352,11 @@ namespace SolarDB.Models
             return records;
         }
 
+        /*  
+        *  Input:   SolarContext database
+        *  Output:  None
+        *  Desc:    Scans all weather readings in the database looking for missing records based on date
+        */
         static void addMissingWeather(SolarContext context)
         {
             int plant1 = 4135001;

@@ -1,10 +1,11 @@
 ﻿// Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
 // for details on configuring this project to bundle and minify static web assets.
 
-//This file is included in the HTML header
-
-//These two methods change the value attribute depending on checked value
-//Used by the form data sent in a POST
+/*  Input:  ID of a checkbox element, boolean value to change it to
+ *  Output: None
+ *  Desc:   Toggles a checkbox to the boolean value
+ *          Backend form data uses the value parameter
+ */
 function setCheckbox(id, bool)
 {
     let e = document.getElementById(id);
@@ -19,11 +20,14 @@ function setCheckbox(id, bool)
     else e.setAttribute("value", "false");
 }
 
-//Really just toggles the value, checking the box toggles the checked = true/false
+/*  Input:  ID of an element
+ *  Output: None
+ *  Desc:   Really just toggles the value parameter of the element based on if checked or not
+ *          The backend form data uses the value parameter
+ */
 function toggleCheckbox(id)
 {
     let e = document.getElementById(id);
-    console.log("Changing " + id + " is checked " + e.checked);
     if (e.checked)
     {
         e.setAttribute("value", "true");
@@ -34,20 +38,35 @@ function toggleCheckbox(id)
     }
 }
 
+/*  Input:  None
+ *  Output: None
+ *  Desc:   Called on page load of a POST document. Sets up data to be displayed
+ */
 function onReadyPOST()
 {
-    //console.log("Weather is " + showWeather + " type " + typeof(showWeather));
     console.log(data);
     optionsGUI.init("GUIcontrol");
     charts.init("graph"); 
 }
 
-//Basic data object 
+/*  JSON Datastructure which will contain all data passed to the page
+ * 
+ */
 var data = [];
+
+/*  Input:  Facility number
+ *  Output: Facility object
+ *  Desc:   Retrieves reference to the facility queried, or undefined
+ */
 data.getFac = function (facNum)
 {
     return this.find(e => e.facility == facNum)
 };
+
+/*  Input:  SourceKey String
+ *  Output: SourceKey array
+ *  Desc:   Searches for a sourceKey array in any facility and returns it, or undefined
+ */
 data.getSrc = function (srcStr) 
 {
     for (i = 0; i < this.length; i++) {
@@ -56,35 +75,43 @@ data.getSrc = function (srcStr)
         }
     }
 };
+
+/*  Input:  SourceKey String
+ *  Output: Facility Object
+ *  Desc:   Returns facility the sourceKey belongs to, or undefined
+ */
 data.getFacBySrc = function (srcStr)
 {
     for (i = 0; i < this.length; i++)
         if (this[i][srcStr]) return this[i];
 }
 
-/*  Reads all the passed @model lists into data[]
- *  data JSON looks like this
- *  data{
- *      obj { 
-     *          "facility" : facNum,
-     *          "dates" : [],
-     *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ], 
-     *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
-     *          "srcKeys" : [] //Array of source key names
-     *          "weatherExists" : boolean,
-     *          "powerExists" : boolean,
-     *          "avgPower" : [] //Averaged power of source keys
- *          }//end obj
- *      getFac(facNum); Returns obj where facility = facNum, or undefined
- *      getSrc(srcStr); Returns source array in obj where sourceKey = srcStr, or undefined
- *  }//end data
- * 
- * 
- *  The idea is that the data is only scanned through once to break it into smaller chunks
+/* Input:   Several JSON passed in by backend
+ *              facilities: All facility numbers
+ *              weather:    All weather readings, sorted by date
+ *              power:      All power readings, sorted by date
+ *              powerSource:All power sources, sorted by facility
+ *              plantSelect:Currently selected plant or -1 for all
+ *  Output: Parses data into the data[] object
+ *              data[{                                                          facility object
+ *                   "facility" : facNum,                                       facility object number
+ *                   "weather"  : [],                                           weather readings, sorted by date
+ *                   "foreach srcKey name where srcKey.plant == facNum" : [],   sourceKey arrays containing power readings, sorted by date
+ *                   "avgPower" : [],                                           Array of each sourceKey array averaged together
+ *                   "srcKeys"  : []                                            array of sourceKey names
+ *                   },
+ *                  "dates" : [],                                               array of unique dates in data set
+ *                  "weatherExists" : boolean,                                  boolean if any weatherReadings.length > 0
+ *                  "powerExists" : boolean,                                    boolean if any powerReadings.length > 0
+ *                  "plantSelect" : int                                         integer of currently selected plant, -1 sentinel value if all
+ *                  "getFac" : function,                                        function
+ *                  "getSrc" : function,                                        function
+ *                  "getFacBySrc" : function]                                   funciton
+ *  Desc:   The main data is scanned through only once to produce this JSON object
+ *          Each data point type can then be accessed quickly and without reading irrelevant data
  */
 function parseData(facilities, weather, power, powerSource, plantSelect) {
-    //Check used to make sure dates arent added multiple times
-    let dateAdded = 0;
+    let dateAdded = 0;      //Boolean to ensure dates only populated once
     data["dates"] = [];     //List of all the dates
     data["facNums"] = [];   //List of all the facility numbers
     data["weatherExists"] = weather.length > 0;
@@ -96,6 +123,7 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
         data.push({ "facility": facilities[i]["plantNumber"], "weather": [], "srcKeys": [], "avgPower": [] });
         data.facNums.push(facilities[i]["plantNumber"]);
     }
+    //Add weather readings, sorted by date and inserted into the facility they belong to
     for (i = 0; i < weather.length; i++) {
         let d = data.getFac(weather[i].plantNumber);
         if (d) {
@@ -118,6 +146,7 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
     {
         dateAdded = 1;
     }
+    //Add arrays for each source key to the facility they belong to
     for (let i = 0; i < powerSource.length; i++) {
         let d = data.getFac(powerSource[i].plantNumber);
         if (d) {
@@ -128,13 +157,13 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
     }
     let src;
 
-    //Linear scan through all power readings 
+    //Add power readings to a "sourceKey" : [] array. Also creates avgPower array and populates it
     for (let i = 0; i < power.length; i++)
     {
         let d = data.getSrc(power[i].sourceKey);
         if (d)
         {
-            if(!src) src = power[i].sourceKey;
+            if(!src) src = power[i].sourceKey;  //Sets src to the first source key if it is undefined
             d.push(
             {
                 "dC_Power": power[i]["dC_Power"], "aC_Power": power[i]["aC_Power"], "dailyYield": power[i]["dailyYield"], "totalYield": power[i]["totalYield"]
@@ -144,7 +173,7 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
              */
             let a = data.getFacBySrc(power[i].sourceKey)
             let len = d.length - 1;
-            //Automatic anomaly checking will be done here. Len is an index based on current index of a srcKey array being worked on
+            //Automatic anomaly checking can be done here. Len is an index based on current index of a srcKey array being worked on
             if (a.avgPower.length < d.length)
             {
                 let ac = d[len].aC_Power;
@@ -169,19 +198,20 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
                 a.avgPower[len]["avgDaily"] += day;
             }
         }
-        //Average out each facilities avgPower array
+        //Populates date array if it already hasnt been
         if (!dateAdded && src == power[i].sourceKey)
         {
             data.dates.push(power[i].dateAndTime);
         }
     }
+    //Averages out the values in the avgPower array
     for (index = 0; index < facilities.length; index++)
     {
         let facNum = data.facNums[index];
         let fac = data.getFac(facNum);
         if (fac)//&& fac.avgPower.lengh > 0)
         {
-            let avgLen = fac.srcKeys.length; //22
+            let avgLen = fac.srcKeys.length; //22 based on current dataset
             for (i = 0; i < fac.avgPower.length; i++)
             {
                 fac.avgPower[i]["avgAC"] /= avgLen;
@@ -196,25 +226,10 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
 //######################################              Chart Namespace              #####################################################
 //######################################################################################################################################
 
-/*  Reads all the passed @model lists into data[]
- *  data JSON looks like this
- *  data{
- *      obj {
- *          "facility" : facNum,
- *          "weather" : [ {"ambientTemp" : n, "moduleTemp" : n, "irradiation" : n} ],
- *          "sourceKey of power array to string" : [ {"dC_power" : n, "aC_power" : n, "dailyYield" : n, "totalYield" : n} ]
- *          }//end obj
- *      getFac(facNum); Returns obj where facility = facNum, or undefined
- *      getSrc(srcStr); Returns source array in obj where sourceKey = srcStr, or undefined
- *  }//end data
- *
- * 
- *  This namespace dynamically controls the chart based on user input
- *  Call charts.init(HTML DOM id) to connect it to an HTML canvas
- *  Call charts.draw() to redraw the graph
- *  Relies on the data[] object being parsed beforehand
- */
-
+/*  Input:  None
+*   Output: None
+*   Desc:   charts namespace. Controls drawing and canvas elements
+*/
 const charts = (() =>
 {
     let canvas;
@@ -234,6 +249,10 @@ const charts = (() =>
     let showModuleData;
     let showIrridData;
 
+/*  Input:  id of chart element
+*   Output: None
+*   Desc:   Initializes the charts namespace
+*/
     const init = (id) =>
     {
         canvas = document.getElementById(id);
@@ -254,11 +273,13 @@ const charts = (() =>
         draw();
     }
 
-    //Draws the chart
+/*  Input:  None
+*   Output: None
+*   Desc:   Redraws the chart. Called after a GUI change normally
+*/
     const draw = () =>
     {
         legend = [];
-        console.log("Redrawing graph");
         context.clearRect(0, 0, canvas.width, canvas.height);
 
         if (plotData())
@@ -270,6 +291,10 @@ const charts = (() =>
             noData();
     }
 
+/*  Input:  None
+*   Output: None
+*   Desc:   Prints a "No Data Loaded" message on the charts canvas
+*/
     const noData = () =>
     {
         let txt = "No Data Loaded";
@@ -280,6 +305,10 @@ const charts = (() =>
         context.fillText(txt, chartH / 2 - xOffset + offSet, 100);
     }
 
+/*  Input:  None
+*   Output: None
+*   Desc:   Draws the color legend in top right of canvas
+*/
     const drawLegend = () =>
     {
         //{["name", "color value"]} 15pt arial
@@ -295,6 +324,10 @@ const charts = (() =>
         }
     }
 
+/*  Input:  None
+*   Output: None
+*   Desc:   Draws x legend values based on xLabel[] datay and date Length
+*/
     const renderXAxis = () =>
     {
         context.beginPath();
@@ -313,8 +346,10 @@ const charts = (() =>
         }
     }
 
-    //Actually -45 degrees
-    //Draws slanted text at the x, y coored passed
+/*  Input:  text string to be printed, x coord, y coord
+*   Output: None
+*   Desc:   Draws text string rotated to -45d angle at x, y coordinate
+*/
     const draw45DegreeText = (text, x, y) => {
         context.save();
         let r = (-45 * Math.PI / 180);
@@ -325,6 +360,11 @@ const charts = (() =>
         context.fillRect(x, y - 50, 4, 10);
     }
 
+/*  Input:  None
+*   Output: None
+*   Desc:   Populates xLabel[] with data.dates[] data. 
+*           Changes to days instead of times if number of days is over 3   
+*/
     const popXlabel = () =>
     {
         for (i = 0; i < data.dates.length; i++)
@@ -353,9 +393,10 @@ const charts = (() =>
         }
     }
 
-    /*  Plots data if it exists
-     * 
-     */ 
+/*  Input:  None
+*   Output: boolean if anything was plotted to the convas
+*   Desc:   Calls various other functions based on GUI checks
+*/
     const plotData = () =>
     {
         let dataExists = false;
@@ -373,6 +414,10 @@ const charts = (() =>
         return dataExists;
     }
 
+/*  Input:  None
+*   Output: None
+*   Desc:   Plots the weather graph. Scaling changes based on if the power graph is displayed or not
+*/
     const plotWeather = () =>
     {
         if (!document.getElementById("weatherGraph").checked) return;
@@ -423,7 +468,6 @@ const charts = (() =>
 
             }//Setup is complete
 
-
             maxC = (maxAp > maxMp) ? maxAp : maxMp;
             //Set up the scale values stored in index 3
             ap[3] = chartH / maxC / ambientScale;
@@ -460,10 +504,10 @@ const charts = (() =>
         drawWeatherLabel();
     }
 
-    /*  Temperature values on right side
-     *  Irradiation on bottom left side
-     *  Line color legend top right
-     */
+/*  Input:  None
+*   Output: None
+*   Desc:   Draws the weather y label values. Temperature values on right, irradiation values on left
+*/
     const drawWeatherLabel = () =>
     {
         let maxCScale = chartH / 50 / ambientScale;
@@ -486,7 +530,10 @@ const charts = (() =>
         }
     }
 
-    //This is very similar to the weather plotting function
+/*  Input:  None
+*   Output: None
+*   Desc:   Plots the power readings. Does various GUI checks and scales graph based on weather GUI checks
+*/
     const plotPower = () =>
     {
         if (!document.getElementById("powerGraph").checked) return;
@@ -608,7 +655,11 @@ const charts = (() =>
         drawPowerLabel(maxPower, powerScale);
     }
 
-    //Weather labels are always on bottom, but power charts move around
+/*  Input:  None
+*   Output: None
+*   Desc:   Draws the power readings y label in top left of canvas
+*           y label values are dynamically scaled bases on power reading data
+*/
     const drawPowerLabel = (maxPower, powerScale) =>
     {
         if (document.getElementById("powerGraph").checked)
@@ -626,6 +677,14 @@ const charts = (() =>
         }
     }
 
+/*  Input:  color hex, name string, yVal coord, leftOrRight string
+ *          color - color of line
+ *          name - text printed by line
+ *          yVal - y coord location of line
+ *          leftOrRight - displayed on left or right side of canves
+*   Output: None
+*   Desc:   Draws y label on canvas with accompanying colored line
+*/
     const drawLabel = (color, name, yVal, leftOrRight) => {
         let xVal = 0;
         if (leftOrRight == "left")
@@ -642,11 +701,15 @@ const charts = (() =>
         context.stroke();
     }
 
-    /*  p - the point being worked ont
-     *  i - expects this to be a % of total length: i/array.length, no offsets
-     *  value - actual value of point
-     *  xScale - x value in pixels between each point
-     */ 
+/*  Input:  p[], i integer, value double, xScale double, yOffSet integer
+*           p[] - array containing current and last value of a point 
+ *          i - current iteration of for loop.
+ *          value - new value to replace current value
+ *          xScale - xScale value for current reading type. Number of pixels between each point
+ *          yOffSet - offset value, used for dynamically sized charts. 0 by default
+*   Output: None
+*   Desc:   Moves new data into a point array to get it read to draw the next line. Lines need 2 points
+*/
     const setPoint = (p, i, value, xScale, yOffSet = 0) =>
     {
         p[0] = p[1];
@@ -655,6 +718,10 @@ const charts = (() =>
 
     }
 
+/*  Input:  p[] point to be plotted
+*   Output: None
+*   Desc:   Draws a line between p[0] and p[1]
+*/
     const plotPoint = (p) =>
     {
         context.beginPath();
@@ -672,12 +739,10 @@ const charts = (() =>
 //######################################                GUI Namespace                   ################################################
 //######################################################################################################################################
 
-/*  Namespace controls the weather and power GUI on the right side of the chart
- *  Drawn below the generic options
- *  Expects the id of a div to work in
- *  Expects data[] to be parsed
- */
-
+/*  Input:  None
+*   Output: None
+*   Desc:   optionsGUI namespace, uses javascript to create GUI elements on right side of canvas based on data loaded
+*/
 const optionsGUI = (() =>
 {
     let guiDiv;         //Entire div on right side of chart
@@ -686,11 +751,14 @@ const optionsGUI = (() =>
     let powerGUIselect; //Id of power GUI multiple select for srcKeys
     let weatherGUIdiv;  //Id of weather GUI type
 
-    //Add stuff on data load
+/*  Input:  id - id of div element to display GUI in
+*   Output: None
+*   Desc:   Initializes the optionsGUI namespace
+*           Starts populating the guiDiv element with general GUI options
+*/
     const init = (id) =>
     {
         guiDiv = document.getElementById(id);    
-        //guiDiv.style.border = "1px black solid";
         //Creates a checkbox for each plant to toggle the data on/off
         if (data.plantSelect == -1)
         {
@@ -768,32 +836,26 @@ const optionsGUI = (() =>
         createChartGUI();
     }
 
-    //Creates the specific 
+/*  Input:  None
+*   Output: None
+*   Desc:   Calls appropriate functions if data elements exist
+*/
     const createChartGUI = () =>
     {
-        if (data.powerExists && data.weatherExists)
+        if (data.powerExists)
         {
-            console.log("Both power and weather");
-            //Get selection from the <select> tag and show it
-
-            //Create the GUI divs and hide the non selected one
             powerGUIdiv = powerGUI();
-            weatherGUIdiv = weatherGUI();
         }
-        else
+        if (data.weatherExists)
         {
-            if (data.powerExists)
-            {
-                powerGUIdiv = powerGUI();
-            }
-            if (data.weatherExists)
-            {
-                weatherGUIdiv = weatherGUI();
-            }
+            weatherGUIdiv = weatherGUI();
         }
     }
 
-    //Puts the power GUI into the div
+/*  Input:  None
+*   Output: id of div element containing every element created in this function
+*   Desc:   Creates GUI elements for power reading display
+*/
     const powerGUI = () =>
     {
         let id = "powerGUIdiv";
@@ -826,9 +888,11 @@ const optionsGUI = (() =>
         setCheckbox("showAveragedPower", true);
         return id;
     }
-    /*  Puts the weather GUI into the div
-     *  Pretty simple, only three things
-     */
+
+/*  Input:  None
+*   Output: id of div element containing every element created in this function
+*   Desc:   Creates GUI elements for weather reading display
+*/
     const weatherGUI = () =>
     {
         let id = "weatherGUIdiv"
@@ -850,11 +914,19 @@ const optionsGUI = (() =>
         return id;
     }
 
+/*  Input:  id of select element calling this event
+*   Output: None
+*   Desc:   Currently just a simple callback to charts.draw(). Associated with a change attribute on select elements
+*/
     const selectEvent = (id) =>
     {
         charts.draw();
     }
 
+/*  Input:  id expected to belong to a div element
+*   Output: None
+*   Desc:   Toggles display style property of element
+*/
     const toggleHideElement = (id) =>
     {
         let e = document.getElementById(id);
@@ -865,6 +937,14 @@ const optionsGUI = (() =>
 
     //Creates a dropdown using the provided array. Returns the id 
     //example array: [["powerControls", "Power Controls"], ["weatherControls", "Weather Controls"]];
+/*  Input:  rDiv div element, id string, labelTxt string, arr[] array
+ *          rDiv - receiveing div for created div to be added as a child to
+ *          id - id of the actual select element
+ *          labelTxt - text shown above the select element
+ *          arr[] - data to populate the select element with
+*   Output: Same id passed to function, to save a single line of code lol
+*   Desc:   Creates a select element populated with passed data and inside its own div, added to children of rDiv
+*/
     const createSelect = (rDiv, id, labelTxt, arr) =>
     {
         let selectDiv = document.createElement("div");
@@ -891,10 +971,14 @@ const optionsGUI = (() =>
         return id;
     }
 
-    //Creates a checkbox with label and adds to end of rDiv element child list
-    //Check boxes are checked=true by default
-    //Sets id of containing div as "passed_name + "div"
-    //Returns id of containing div
+/*  Input:  rDiv, id, text, cls
+ *          rDiv receiving div for the created div to be added to as a child
+ *          id - id of actual checkbox element being created
+ *          text - Label text next to the checkbox
+ *          cls - CSS class to be associated with this checkbox, with a default valute
+*   Output: id of div element containing the created checkbox
+*   Desc:
+*/
     const createCheckbox = (rDiv, id, text, cls = "checkBoxContainerCenter") =>
     {
         let boxNode = document.createElement("div");
@@ -922,28 +1006,34 @@ const optionsGUI = (() =>
         return divId;
     }
 
-    //Returns true or false if an srcKey is in powerGUIselect multiple select element
+/*  Input:  value_check string - value to check if it is selected or not
+*   Output: boolean
+*   Desc:   Returns a boolean value based on if a query (sourceKey expected) is selected in the powerGUI select element
+ *          This select element is a multiple select
+*/
     const powerGUIselectValidate = (value_check) =>
     {
-        //powerGUIselect
         let selected = [];
         let opt;
         let ms = document.getElementById(powerGUIselect); //Multiple Select
-        if (!ms) console.log("multi select is null?");
+        //Add each selected option to the selected array
         for (i = 0; i < ms.options.length; i++)
         {
             opt = ms.options[i];
             if (opt.selected)
                 selected.push(opt);
         }
-
+        //If the querired string is contained in the selected array, or the current selection includes "allVal", then pass true
         let found = selected.find(e => e.value == value_check || e.value == "allVal");
         if (found)
             return true;
         else return false;
     }
 
-    //Deletes everything inside of the guiDiv
+/*  Input:  None
+*   Output: None
+*   Desc:   Clears all child elements in the guiDiv element
+*/
     const clearGUIdiv = () =>
     {
         while (guiDiv.firstChild())
