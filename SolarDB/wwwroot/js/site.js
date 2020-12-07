@@ -1,5 +1,11 @@
-﻿// Please see documentation at https://docs.microsoft.com/aspnet/core/client-side/bundling-and-minification
-// for details on configuring this project to bundle and minify static web assets.
+﻿
+/*
+    This is a slightly edited version from the .NET Core version of the project
+        They are not compatable with each other
+*/
+
+//A global variable which will hold all the data
+var DBdata = [];
 
 /*  Input:  ID of a checkbox element, boolean value to change it to
  *  Output: None
@@ -9,9 +15,8 @@
 function setCheckbox(id, bool)
 {
     let e = document.getElementById(id);
-
     if (e == null)
-        console.log(id + " is null in setCheckbox(), tried setting to " + bool);
+        console.log("Checkbox " + id + " is null.");
 
     e.checked = bool;
     if (bool)
@@ -40,51 +45,50 @@ function toggleCheckbox(id)
 
 /*  Input:  None
  *  Output: None
- *  Desc:   Called on page load of a POST document. Sets up data to be displayed
+ *  Desc:   Called after the page is loaded
  */
 function onReadyPOST()
 {
-    console.log(data);
+    parseData(facilities, weather, power, powerSources, -1);
+    //console.log("data");
+    //console.log(DBdata);
     optionsGUI.init("GUIcontrol");
-    charts.init("graph"); 
+    DBcharts.init("graph");
 }
 
-/*  JSON Datastructure which will contain all data passed to the page
- * 
- */
-var data = [];
-
 /*  Input:  Facility number
- *  Output: Facility object
- *  Desc:   Retrieves reference to the facility queried, or undefined
- */
-data.getFac = function (facNum)
+*  Output: Facility object
+*  Desc:   Retrieves reference to the facility queried, or undefined
+*/
+DBdata.getFac = function (facNum)
 {
-    return this.find(e => e.facility == facNum)
+    return this.find(e => e.facility == facNum);
 };
 
 /*  Input:  SourceKey String
- *  Output: SourceKey array
- *  Desc:   Searches for a sourceKey array in any facility and returns it, or undefined
- */
-data.getSrc = function (srcStr) 
+*  Output: SourceKey array
+*  Desc:   Searches for a sourceKey array in any facility and returns it, or undefined
+*/
+DBdata.getSrc = function (srcStr) 
 {
-    for (i = 0; i < this.length; i++) {
-        if (this[i][srcStr]) {
+    for (i = 0; i < this.length; i++)
+    {
+        if (this[i][srcStr])
+        {
             return this[i][srcStr];
         }
     }
 };
 
 /*  Input:  SourceKey String
- *  Output: Facility Object
- *  Desc:   Returns facility the sourceKey belongs to, or undefined
- */
-data.getFacBySrc = function (srcStr)
+*  Output: Facility Object
+*  Desc:   Returns facility the sourceKey belongs to, or undefined
+*/
+DBdata.getFacBySrc = function (srcStr)
 {
     for (i = 0; i < this.length; i++)
         if (this[i][srcStr]) return this[i];
-}
+};
 
 /* Input:   Several JSON passed in by backend
  *              facilities: All facility numbers
@@ -92,8 +96,8 @@ data.getFacBySrc = function (srcStr)
  *              power:      All power readings, sorted by date
  *              powerSource:All power sources, sorted by facility
  *              plantSelect:Currently selected plant or -1 for all
- *  Output: Parses data into the data[] object
- *              data[{                                                          facility object
+ *  Output: Parses DBdata into the DBdata[] object
+ *              DBdata[{                                                          facility object
  *                   "facility" : facNum,                                       facility object number
  *                   "weather"  : [],                                           weather readings, sorted by date
  *                   "foreach srcKey name where srcKey.plant == facNum" : [],   sourceKey arrays containing power readings, sorted by date
@@ -110,35 +114,36 @@ data.getFacBySrc = function (srcStr)
  *  Desc:   The main data is scanned through only once to produce this JSON object
  *          Each data point type can then be accessed quickly and without reading irrelevant data
  */
-function parseData(facilities, weather, power, powerSource, plantSelect) {
+function parseData(facilities, weather, power, powerSource, plantSelect)
+{
     let dateAdded = 0;      //Boolean to ensure dates only populated once
-    data["dates"] = [];     //List of all the dates
-    data["facNums"] = [];   //List of all the facility numbers
-    data["weatherExists"] = weather.length > 0;
-    data["powerExists"] = power.length > 0;
-    data["plantSelect"] = plantSelect;
+    DBdata.dates = [];     //List of all the dates
+    DBdata.facNums = [];   //List of all the facility numbers
+    DBdata.weatherExists = weather.length > 0;
+    DBdata.powerExists = power.length > 0;
+    DBdata.plantSelect = plantSelect;
 
     //Add each of the facilities
-    for (i = 0; i < facilities.length; i++) {
-        data.push({ "facility": facilities[i]["plantNumber"], "weather": [], "srcKeys": [], "avgPower": [] });
-        data.facNums.push(facilities[i]["plantNumber"]);
+    for (i = 0; i < facilities.length; i++)
+    {
+        DBdata.push({ "facility": facilities[i].plantNumber, "weather": [], "srcKeys": [], "avgPower": [] });
+        DBdata.facNums.push(facilities[i].plantNumber);
     }
     //Add weather readings, sorted by date and inserted into the facility they belong to
-    for (i = 0; i < weather.length; i++) {
-        let d = data.getFac(weather[i].plantNumber);
-        if (d) {
+    for (i = 0; i < weather.length; i++)
+    {
+        let d = DBdata.getFac(weather[i].plantNumber);
+        if (d) 
+        {
             d.weather.push(
                 {
                     "ambientTemp": weather[i].ambientTemp, "moduleTemp": weather[i].moduleTemp, "irradiation": weather[i].irradiation
                 });
             //If all plants are selected (-1) then add weather dates from the first known plant (4135001)
-            if (weather[i].plantNumber == 4135001 && plantSelect == -1)
+            //Changed from original since plantSelect is always == -1
+            if (weather[i].plantNumber == 4135001)
             {
-                data.dates.push(weather[i].dateAndTime);
-            }
-            else //Only one plant being used in data
-            {
-                data.dates.push(weather[i].dateAndTime);
+                DBdata.dates.push(weather[i].dateAndTime);
             }
         }
     }
@@ -147,9 +152,11 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
         dateAdded = 1;
     }
     //Add arrays for each source key to the facility they belong to
-    for (let i = 0; i < powerSource.length; i++) {
-        let d = data.getFac(powerSource[i].plantNumber);
-        if (d) {
+    for (let i = 0; i < powerSource.length; i++)
+    {
+        let d = DBdata.getFac(powerSource[i].plantNumber);
+        if (d)
+        {
             let key = powerSource[i].sourceKey;
             d.srcKeys.push(key);
             d[key] = [];
@@ -160,18 +167,18 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
     //Add power readings to a "sourceKey" : [] array. Also creates avgPower array and populates it
     for (let i = 0; i < power.length; i++)
     {
-        let d = data.getSrc(power[i].sourceKey);
+        let d = DBdata.getSrc(power[i].sourceKey);
         if (d)
         {
-            if(!src) src = power[i].sourceKey;  //Sets src to the first source key if it is undefined
+            if (!src) src = power[i].sourceKey;  //Sets src to the first source key if it is undefined
             d.push(
-            {
-                "dC_Power": power[i]["dC_Power"], "aC_Power": power[i]["aC_Power"], "dailyYield": power[i]["dailyYield"], "totalYield": power[i]["totalYield"]
-            });
+                {
+                    "dC_Power": power[i].dC_Power, "aC_Power": power[i].aC_Power, "dailyYield": power[i].dailyYield, "totalYield": power[i].totalYield
+                });
             /*  if avgPower[length of source] != out of bounds. push a new value
              *      else add the value to the current value
              */
-            let a = data.getFacBySrc(power[i].sourceKey)
+            let a = DBdata.getFacBySrc(power[i].sourceKey);
             let len = d.length - 1;
             //Automatic anomaly checking can be done here. Len is an index based on current index of a srcKey array being worked on
             if (a.avgPower.length < d.length)
@@ -183,7 +190,7 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
                 if (dc < 0) dc = 0;
                 if (day < 0) day = 0;
 
-                a.avgPower.push({ "avgDC" : dc, "avgAC" : ac, "avgDaily" : day });
+                a.avgPower.push({ "avgDC": dc, "avgAC": ac, "avgDaily": day });
             }
             else
             {
@@ -193,30 +200,30 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
                 if (ac < 0) ac = 0; //Below 0 means something went wrong and there was no reading
                 if (dc < 0) dc = 0;
                 if (day < 0) day = 0;
-                a.avgPower[len]["avgAC"] += ac;
-                a.avgPower[len]["avgDC"] += dc;
-                a.avgPower[len]["avgDaily"] += day;
+                a.avgPower[len].avgAC += ac;
+                a.avgPower[len].avgDC += dc;
+                a.avgPower[len].avgDaily += day;
             }
         }
         //Populates date array if it already hasnt been
         if (!dateAdded && src == power[i].sourceKey)
         {
-            data.dates.push(power[i].dateAndTime);
+            DBdata.dates.push(power[i].dateAndTime);
         }
     }
     //Averages out the values in the avgPower array
     for (index = 0; index < facilities.length; index++)
     {
-        let facNum = data.facNums[index];
-        let fac = data.getFac(facNum);
+        let facNum = DBdata.facNums[index];
+        let fac = DBdata.getFac(facNum);
         if (fac)//&& fac.avgPower.lengh > 0)
         {
             let avgLen = fac.srcKeys.length; //22 based on current dataset
             for (i = 0; i < fac.avgPower.length; i++)
             {
-                fac.avgPower[i]["avgAC"] /= avgLen;
-                fac.avgPower[i]["avgDC"] /= avgLen;
-                fac.avgPower[i]["avgDaily"] /= avgLen;
+                fac.avgPower[i].avgAC /= avgLen;
+                fac.avgPower[i].avgDC /= avgLen;
+                fac.avgPower[i].avgDaily /= avgLen;
             }
         }
     }
@@ -230,15 +237,15 @@ function parseData(facilities, weather, power, powerSource, plantSelect) {
 *   Output: None
 *   Desc:   charts namespace. Controls drawing and canvas elements
 */
-const charts = (() =>
+const DBcharts = (() =>
 {
     let canvas;
     let context;
     let offSet = 50;
     let xLabel = [];
     let legend = [];
-    let chartH;          
-    let chartW;  
+    let chartH;
+    let chartW;
     let dayCount = 1;
     //Sets up how much of the chart each item takes up
     let ambientScale = 2;
@@ -249,10 +256,14 @@ const charts = (() =>
     let showModuleData;
     let showIrridData;
 
-/*  Input:  id of chart element
-*   Output: None
-*   Desc:   Initializes the charts namespace
-*/
+    let startDay = "2020-05-15T00:00:00";
+    let endDay = "2020-05-15T23:45:00";
+    let indexPoints = [];
+
+    /*  Input:  id of chart element
+    *   Output: None
+    *   Desc:   Initializes the charts namespace
+    */
     const init = (id) =>
     {
         canvas = document.getElementById(id);
@@ -262,25 +273,26 @@ const charts = (() =>
         chartH = canvas.clientHeight - offSet;         //Space at bottom for labels
         chartW = canvas.clientWidth - offSet - offSet; //Space on left and right for labels
 
-        if (data.weatherExists)
+        if (DBdata.weatherExists)
         {
             showAmbientData = true;
             showModuleData = true;
             showIrridData = true;
         }
-
-        popXlabel();
         draw();
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Redraws the chart. Called after a GUI change normally
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Redraws the chart. Called after a GUI change normally
+    */
     const draw = () =>
     {
         legend = [];
         context.clearRect(0, 0, canvas.width, canvas.height);
+        indexPoints = getIndexPointsUsingDates().slice(0);
+
+        popXlabel();
 
         if (plotData())
         {
@@ -289,12 +301,12 @@ const charts = (() =>
         }
         else
             noData();
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Prints a "No Data Loaded" message on the charts canvas
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Prints a "No Data Loaded" message on the DBcharts canvas
+    */
     const noData = () =>
     {
         let txt = "No Data Loaded";
@@ -303,35 +315,35 @@ const charts = (() =>
         context.font = "50px Arial";
         context.fillStyle = "#000000";
         context.fillText(txt, chartH / 2 - xOffset + offSet, 100);
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Draws the color legend in top right of canvas
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Draws the color legend in top right of canvas
+    */
     const drawLegend = () =>
     {
         //{["name", "color value"]} 15pt arial
         let x = chartW + 50 + 50;
-        for (i = 0; i < legend.length; i++)
+        for (let i = 0; i < legend.length; i++)
         {
             let txtWidth = context.measureText(legend[i][0]).width;
 
             context.beginPath();
             context.fillStyle = legend[i][1];
-            context.fillText(legend[i][0], x - txtWidth, (i+2) * 15);
+            context.fillText(legend[i][0], x - txtWidth, (i + 2) * 15);
             context.stroke();
         }
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Draws x legend values based on xLabel[] datay and date Length
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Draws x legend values based on xLabel[] datay and date Length
+    */
     const renderXAxis = () =>
     {
         context.beginPath();
-        context.fillStyle = "#000000"
+        context.fillStyle = "#000000";
         context.fillRect(offSet, chartH, chartW, 3);
         context.stroke();
         let y = canvas.clientHeight;    //Going to access this a lot
@@ -339,18 +351,19 @@ const charts = (() =>
         let xStep = chartW / xLabel.length;
         if (dayCount > 3) dayCount = 1;
 
-        for (i = 0; i < xLabel.length; i += dayCount)
+        for (let i = 0; i < xLabel.length; i += dayCount)
         {
             let x = (xStep * i) + offSet;
             draw45DegreeText(xLabel[i][1], x, y);
         }
-    }
+    };
 
-/*  Input:  text string to be printed, x coord, y coord
-*   Output: None
-*   Desc:   Draws text string rotated to -45d angle at x, y coordinate
-*/
-    const draw45DegreeText = (text, x, y) => {
+    /*  Input:  text string to be printed, x coord, y coord
+    *   Output: None
+    *   Desc:   Draws text string rotated to -45d angle at x, y coordinate
+    */
+    const draw45DegreeText = (text, x, y) =>
+    {
         context.save();
         let r = (-45 * Math.PI / 180);
         context.translate(x - 13, y);
@@ -358,18 +371,23 @@ const charts = (() =>
         context.fillText(text, 0, 0);
         context.restore();
         context.fillRect(x, y - 50, 4, 10);
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Populates xLabel[] with data.dates[] data. 
-*           Changes to days instead of times if number of days is over 3   
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Populates xLabel[] with data.dates[] data. 
+    *           Changes to days instead of times if number of days is over 3   
+    */
     const popXlabel = () =>
     {
-        for (i = 0; i < data.dates.length; i++)
+        let t = [];
+        //Reset xLabel since it can change at any time
+        //In the past I've had issues with stuff like xLabel = [], but never any using slice on an empty array
+        xLabel = t.slice(0);
+        dayCount = 0;
+        for (i = indexPoints[0]; i < indexPoints[1]; i++)
         {
-            let text = data.dates[i];
+            let text = DBdata.dates[i];
             let n = text.indexOf("T");
             if (text.substring(n + 1) == "00:00:00")
             {
@@ -378,7 +396,7 @@ const charts = (() =>
             if (text.substring(n + 4, n + 6) == "00")
             {
                 //Pushes a pair {date, time} => {"mm-dd", "hh:mm"}
-                xLabel.push([text.substring(5, n), text.substring(n + 1, n+ 6)]);
+                xLabel.push([text.substring(5, n), text.substring(n + 1, n + 6)]);
             }
         }
         if (dayCount > 3) //After this many days, it just shows month and day only
@@ -391,33 +409,33 @@ const charts = (() =>
             }
             xLabel = temp.slice(0);
         }
-    }
+    };
 
-/*  Input:  None
-*   Output: boolean if anything was plotted to the convas
-*   Desc:   Calls various other functions based on GUI checks
-*/
+    /*  Input:  None
+    *   Output: boolean if anything was plotted to the convas
+    *   Desc:   Calls various other functions based on GUI checks
+    */
     const plotData = () =>
     {
         let dataExists = false;
 
-        if ((showAmbientData || showModuleData || showIrridData) || data.weatherExists)
+        if ((showAmbientData || showModuleData || showIrridData) || DBdata.weatherExists)
         {
             plotWeather();
             dataExists = true;
         }
-        if (data.powerExists)
+        if (DBdata.powerExists)
         {
             plotPower();
             dataExists = true;
         }
         return dataExists;
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Plots the weather graph. Scaling changes based on if the power graph is displayed or not
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Plots the weather graph. Scaling changes based on if the power graph is displayed or not
+    */
     const plotWeather = () =>
     {
         if (!document.getElementById("weatherGraph").checked) return;
@@ -427,7 +445,7 @@ const charts = (() =>
         legend.push(["Irradiation", "#999900"]);
 
         //If power graph isnt being shown, display weather using full chart
-        if (!document.getElementById("powerGraph").checked)
+        if (!document.getElementById("powerGraph").checked || document.getElementById("overlayGraphs").checked)
         {
             ambientScale = 1;
             moduleScale = 1;
@@ -439,16 +457,14 @@ const charts = (() =>
             moduleScale = 2;
             radiateScale = 3;
         }
-
-        for (index = 0; index < data.facNums.length; index++)//For each facility. 
+        for (index = 0; index < DBdata.facNums.length; index++)//For each facility. 
         {
-            let currPlant = data.facNums[index];
-            let d = data.getFac(currPlant);
+            let currPlant = DBdata.facNums[index];
+            let d = DBdata.getFac(currPlant);
 
-            if (d.weather.length < 1) continue; //Skip if empty array
             if (!document.getElementById("showPlant" + currPlant).checked) continue;
 
-            let xScale = chartW / d.weather.length;
+            let xScale = chartW / (indexPoints[1] - indexPoints[0]);
 
             //Setup initial points
             let ap = [[0, 0], [offSet, 0], "#ff0000", -1]; //{ [lastX, lastY], [nowX, nowY], color, yscale}
@@ -460,11 +476,11 @@ const charts = (() =>
             let maxMp = -1;
             let maxRp = -1;
             //Linear scan to setup scaling
-            for (i = 0; i < d.weather.length; i++)
+            for (i = indexPoints[0]; i < indexPoints[1]; i++)
             {
-                maxAp = (maxAp > d.weather[i]["ambientTemp"]) ? maxAp : d.weather[i]["ambientTemp"];
-                maxMp = (maxMp > d.weather[i]["moduleTemp"]) ? maxMp : d.weather[i]["moduleTemp"];
-                maxRp = (maxRp > d.weather[i]["irradiation"]) ? maxRp : d.weather[i]["irradiation"];
+                maxAp = (maxAp > d.weather[i].ambientTemp) ? maxAp : d.weather[i].ambientTemp;
+                maxMp = (maxMp > d.weather[i].moduleTemp) ? maxMp : d.weather[i].moduleTemp;
+                maxRp = (maxRp > d.weather[i].irradiation) ? maxRp : d.weather[i].irradiation;
 
             }//Setup is complete
 
@@ -475,39 +491,44 @@ const charts = (() =>
             rp[3] = chartH / maxRp / radiateScale;
 
             //Set initial y coord
-            ap[1][1] = chartH - (d.weather[0]["ambientTemp"] * ap[3]);
-            mp[1][1] = chartH - (d.weather[0]["moduleTemp"] * mp[3]);
-            rp[1][1] = chartH - (d.weather[0]["irradiation"] * rp[3]);
+            ap[1][1] = chartH - (d.weather[0].ambientTemp * ap[3]);
+            mp[1][1] = chartH - (d.weather[0].moduleTemp * mp[3]);
+            rp[1][1] = chartH - (d.weather[0].irradiation * rp[3]);
 
             showAmbientData = document.getElementById("showAmbientData").checked;
             showModuleData = document.getElementById("showModuleData").checked;
-            showIrridData = document.getElementById("ShowIrridData").checked;
+            showIrridData = document.getElementById("showIrridData").checked;
 
-            for (i = 0; i < d.weather.length; i++)
+            let xVal = 0;
+            for (i = indexPoints[0]; i < indexPoints[1]; i++)
             {
                 //Draw the values
-                if (showAmbientData) {
-                    setPoint(ap, i, d.weather[i]["ambientTemp"], xScale);
+                if (showAmbientData)
+                {
+                    setPoint(ap, xVal, d.weather[i].ambientTemp, xScale);
                     plotPoint(ap);
                 }
-                if (showModuleData) {
-                    setPoint(mp, i, d.weather[i]["moduleTemp"], xScale);
+                if (showModuleData)
+                {
+                    setPoint(mp, xVal, d.weather[i].moduleTemp, xScale);
                     plotPoint(mp);
                 }
-                if (showIrridData) {
-                    setPoint(rp, i, d.weather[i]["irradiation"], xScale)
-                    plotPoint(rp)
+                if (showIrridData)
+                {
+                    setPoint(rp, xVal, d.weather[i].irradiation, xScale);
+                    plotPoint(rp);
                 }
-                
+                xVal++;
             }
         }//End for loop
-        drawWeatherLabel();
-    }
+        if (!document.getElementById("overlayGraphs").checked)
+            drawWeatherLabel();
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Draws the weather y label values. Temperature values on right, irradiation values on left
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Draws the weather y label values. Temperature values on right, irradiation values on left
+    */
     const drawWeatherLabel = () =>
     {
         let maxCScale = chartH / 50 / ambientScale;
@@ -528,12 +549,12 @@ const charts = (() =>
                 drawLabel("#999900", (i * 0.5 + " Rad"), chartH - (i * 0.5) / 2 * radScale, "left");
             }
         }
-    }
+    };
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Plots the power readings. Does various GUI checks and scales graph based on weather GUI checks
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Plots the power readings. Does various GUI checks and scales graph based on weather GUI checks
+    */
     const plotPower = () =>
     {
         if (!document.getElementById("powerGraph").checked) return;
@@ -547,7 +568,7 @@ const charts = (() =>
         let maxDc = -1;
         let powerScale;
 
-        if (!document.getElementById("weatherGraph").checked)
+        if (!document.getElementById("weatherGraph").checked || document.getElementById("overlayGraphs").checked)
         {
             powerScale = 1;
         }
@@ -556,16 +577,17 @@ const charts = (() =>
             powerScale = 2;
         }
 
-        for (index = 0; index < data.facNums.length; index++)//For each facility. 
+        for (index = 0; index < DBdata.facNums.length; index++)//For each facility. 
         {
-            let currPlant = data.facNums[index];
-            let d = data.getFac(currPlant);
+            let currPlant = DBdata.facNums[index];
+            let d = DBdata.getFac(currPlant);
 
-            if (d.srcKeys.length < 1) continue;; //No data to show for this plant
+            if (d.srcKeys.length < 1) continue; //No data to show for this plant
             if (!document.getElementById("showPlant" + currPlant).checked) continue;
 
             let s = d.srcKeys[0];
-            let xScale = chartW / d[s].length; //Scale everything to this value
+            //let xScale = chartW / d[s].length; //Scale everything to this value
+            let xScale = chartW / (indexPoints[1] - indexPoints[0]);
 
             //Start halfway up if scale = 2, or bottom
             let ac = [[0, 0], [offSet, chartH / powerScale], "#AA00FF", -1]; //These values go about 400-800
@@ -577,10 +599,10 @@ const charts = (() =>
                 for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
                 {
                     let sourceStr = d.srcKeys[srcIndex];
-                    for (i = 0; i < d[sourceStr].length; i++)
+                    for (i = indexPoints[0]; i < indexPoints[1]; i++)
                     {
-                        maxAc = (maxAc > d[sourceStr][i]["aC_Power"]) ? maxAc : d[sourceStr][i]["aC_Power"];
-                        maxDc = (maxDc > d[sourceStr][i]["dC_Power"]) ? maxDc : d[sourceStr][i]["dC_Power"];
+                        maxAc = (maxAc > d[sourceStr][i].aC_Power) ? maxAc : d[sourceStr][i].aC_Power;
+                        maxDc = (maxDc > d[sourceStr][i].dC_Power) ? maxDc : d[sourceStr][i].dC_Power;
                     }
                 }
 
@@ -592,14 +614,13 @@ const charts = (() =>
                 //
                 ac[3] = dc[3] = chartH / powerScale / maxPower;
 
-                //Not minusing chart here so these values are on top if showing weather
-                ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
-                dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
+                ac[0][1] = d[d.srcKeys[0]][0].aC_Power * ac[3];
+                dc[0][1] = d[d.srcKeys[0]][0].dC_power * dc[3];
 
                 //Plot
                 let yOffSet = 0;
-                if (document.getElementById("weatherGraph").checked) yOffSet = chartH / powerScale;
-                for (srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
+                if (document.getElementById("weatherGraph").checked && !document.getElementById("overlayGraphs").checked) yOffSet = chartH / powerScale;
+                for (let srcIndex = 0; srcIndex < d.srcKeys.length; srcIndex++) //For each source key in facility
                 {
                     let sourceStr = d.srcKeys[srcIndex];
                     let valueCheck = sourceStr + "select";
@@ -607,26 +628,28 @@ const charts = (() =>
 
 
                     //Initial values for this source
-                    ac[0][1] = d[sourceStr][0]["aC_Power"] * ac[3];
-                    dc[0][1] = d[sourceStr][0]["dC_power"] * dc[3];
+                    ac[0][1] = d[sourceStr][0].aC_Power * ac[3];
+                    dc[0][1] = d[sourceStr][0].dC_power * dc[3];
 
-                    for (i = 0; i < d[sourceStr].length; i++)
+                    let xVal = 0;
+                    for (i = indexPoints[0]; i < indexPoints[1]; i++)
                     {
-                        setPoint(ac, i, d[sourceStr][i]["aC_Power"], xScale, yOffSet);
+                        setPoint(ac, xVal, d[sourceStr][i].aC_Power, xScale, yOffSet);
                         plotPoint(ac);
 
-                        setPoint(dc, i, d[sourceStr][i]["dC_Power"], xScale, yOffSet);
+                        setPoint(dc, xVal, d[sourceStr][i].dC_Power, xScale, yOffSet);
                         plotPoint(dc);
+                        xVal++;
                     }
                 }
             }
             else //Show averaged
             {
                 //Linear scan for scaling setup
-                for (i = 0; i < d.avgPower.length; i++) //For each source key in facility
+                for (i = indexPoints[0]; i < indexPoints[1]; i++)
                 {
-                    maxAc = (maxAc > d.avgPower[i]["avgAC"]) ? maxAc : d.avgPower[i]["avgAC"];
-                    maxDc = (maxDc > d.avgPower[i]["avgDC"]) ? maxDc : d.avgPower[i]["avgDC"];
+                    maxAc = (maxAc > d.avgPower[i].avgAC) ? maxAc : d.avgPower[i].avgAC;
+                    maxDc = (maxDc > d.avgPower[i].avgDC) ? maxDc : d.avgPower[i].avgDC;
                 }
                 //DC power is always much higher. These values are the max value on the power graph
                 maxDc = Math.ceil(maxDc / 1000) * 1000;
@@ -636,30 +659,38 @@ const charts = (() =>
                 ac[3] = dc[3] = chartH / powerScale / maxPower;
 
                 //Not minusing chart here so these values are on top
-                ac[0][1] = d[d.srcKeys[0]][0]["aC_Power"] * ac[3];
-                dc[0][1] = d[d.srcKeys[0]][0]["dC_power"] * dc[3];
+                ac[0][1] = d[d.srcKeys[0]][0].aC_Power * ac[3];
+                dc[0][1] = d[d.srcKeys[0]][0].dC_power * dc[3];
 
                 //Plot
                 let yOffSet = 0;
-                if (document.getElementById("weatherGraph").checked) yOffSet = chartH / powerScale;
-                for (i = 0; i < d.avgPower.length; i++) //For each source key in facility
+                if (document.getElementById("weatherGraph").checked && !document.getElementById("overlayGraphs").checked) yOffSet = chartH / powerScale;
+
+                let xVal = 0;
+                for (i = indexPoints[0]; i < indexPoints[1]; i++)
                 {
-                    setPoint(ac, i, d.avgPower[i]["avgAC"], xScale, yOffSet);
+                    setPoint(ac, xVal, d.avgPower[i].avgAC, xScale, yOffSet);
                     plotPoint(ac);
 
-                    setPoint(dc, i, d.avgPower[i]["avgDC"], xScale, yOffSet)
+                    setPoint(dc, xVal, d.avgPower[i].avgDC, xScale, yOffSet);
                     plotPoint(dc);
+                    xVal++;
                 }
+
+                //Easy function i can test in
+
             }
         }
-        drawPowerLabel(maxPower, powerScale);
-    }
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Draws the power readings y label in top left of canvas
-*           y label values are dynamically scaled bases on power reading data
-*/
+        //if(!document.getElementById("overlayGraphs").checked)
+        drawPowerLabel(maxPower, powerScale);
+    };
+
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Draws the power readings y label in top left of canvas
+    *           y label values are dynamically scaled bases on power reading data
+    */
     const drawPowerLabel = (maxPower, powerScale) =>
     {
         if (document.getElementById("powerGraph").checked)
@@ -675,17 +706,18 @@ const charts = (() =>
                 drawLabel("#0000ff", (i * 1000) + " kW", (chartH - yScale * i * 1000) - yOffSet, "left");
             }
         }
-    }
+    };
 
-/*  Input:  color hex, name string, yVal coord, leftOrRight string
- *          color - color of line
- *          name - text printed by line
- *          yVal - y coord location of line
- *          leftOrRight - displayed on left or right side of canves
-*   Output: None
-*   Desc:   Draws y label on canvas with accompanying colored line
-*/
-    const drawLabel = (color, name, yVal, leftOrRight) => {
+    /*  Input:  color hex, name string, yVal coord, leftOrRight string
+     *          color - color of line
+     *          name - text printed by line
+     *          yVal - y coord location of line
+     *          leftOrRight - displayed on left or right side of canves
+    *   Output: None
+    *   Desc:   Draws y label on canvas with accompanying colored line
+    */
+    const drawLabel = (color, name, yVal, leftOrRight) =>
+    {
         let xVal = 0;
         if (leftOrRight == "left")
             xVal = 0;
@@ -699,29 +731,29 @@ const charts = (() =>
         context.fillStyle = color;
         context.fillRect(xVal, yVal, offSet, 3); //Draws the line
         context.stroke();
-    }
+    };
 
-/*  Input:  p[], i integer, value double, xScale double, yOffSet integer
-*           p[] - array containing current and last value of a point 
- *          i - current iteration of for loop.
- *          value - new value to replace current value
- *          xScale - xScale value for current reading type. Number of pixels between each point
- *          yOffSet - offset value, used for dynamically sized charts. 0 by default
-*   Output: None
-*   Desc:   Moves new data into a point array to get it read to draw the next line. Lines need 2 points
-*/
+    /*  Input:  p[], i integer, value double, xScale double, yOffSet integer
+    *           p[] - array containing current and last value of a point 
+     *          i - current iteration of for loop.
+     *          value - new value to replace current value
+     *          xScale - xScale value for current reading type. Number of pixels between each point
+     *          yOffSet - offset value, used for dynamically sized charts. 0 by default
+    *   Output: None
+    *   Desc:   Moves new data into a point array to get it read to draw the next line. Lines need 2 points
+    */
     const setPoint = (p, i, value, xScale, yOffSet = 0) =>
     {
         p[0] = p[1];
         if (value < 0) value = 0;
         p[1] = [i * xScale + offSet, (chartH - value * p[3]) - yOffSet];
 
-    }
+    };
 
-/*  Input:  p[] point to be plotted
-*   Output: None
-*   Desc:   Draws a line between p[0] and p[1]
-*/
+    /*  Input:  p[] point to be plotted
+    *   Output: None
+    *   Desc:   Draws a line between p[0] and p[1]
+    */
     const plotPoint = (p) =>
     {
         context.beginPath();
@@ -729,9 +761,40 @@ const charts = (() =>
         context.moveTo(p[0][0], p[0][1]);   //Start at point[0]
         context.lineTo(p[1][0], p[1][1]);   //Draw line to point[1]
         context.stroke();
-    }
+    };
 
-    return { init, draw};
+    /*  Input:  dateStart string, dateEnd string
+                Dates follow this format "yyyy-mm-dd"
+    *   Output: None
+    *   Desc:   Sets the range of dates to be displayed
+    */
+    const setDateRange = (ds, de) =>
+    {
+        startDay = ds.concat("T00:00:00");
+        endDay = de.concat("T23:45:00");
+
+        let pos = endDay.indexOf("T") - 2;
+        let front = endDay.slice(0, pos);
+        let day = endDay.slice(pos, pos + 2);
+        day = parseInt(day) - 1;
+        let end = endDay.slice(pos + 2);
+
+        endDay = front + day + end;
+    };
+
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Calculates index starting and stopping points based on start and end date selections
+    *           Returns an index[start int, end int];
+    */
+    const getIndexPointsUsingDates = () =>
+    {
+        let i1 = DBdata.dates.findIndex(d => d == startDay);
+        let i2 = DBdata.dates.findIndex(d => d == endDay);
+        return [i1, i2];
+    };
+
+    return { init, draw, setDateRange };
 })();
 
 //######################################################################################################################################
@@ -751,200 +814,147 @@ const optionsGUI = (() =>
     let powerGUIselect; //Id of power GUI multiple select for srcKeys
     let weatherGUIdiv;  //Id of weather GUI type
 
-/*  Input:  id - id of div element to display GUI in
-*   Output: None
-*   Desc:   Initializes the optionsGUI namespace
-*           Starts populating the guiDiv element with general GUI options
-*/
+    /*  Input:  id - id of div element to display GUI in
+    *   Output: None
+    *   Desc:   Initializes the optionsGUI namespace
+    *           Starts populating the guiDiv element with general GUI options
+    */
     const init = (id) =>
     {
-        guiDiv = document.getElementById(id);    
-        //Creates a checkbox for each plant to toggle the data on/off
-        if (data.plantSelect == -1)
+        guiDiv = document.getElementById(id);
+
+        guiDiv.appendChild(document.createTextNode("Display Power Plants"));
+
+        for (i = 0; i < DBdata.facNums.length; i++)
         {
-            let d = document.createElement("div");
-            d.classList.add("inlineDiv");
-            guiDiv.appendChild(d);
-            let textNode = document.createElement("p");
-            textNode.innerHTML = "Select which specific plant to display";
-            d.appendChild(textNode);
-            for (i = 0; i < data.facNums.length; i++)
-            {
-                let id = "showPlant" + data.facNums[i];
-                let txt = "Plant " + data.facNums[i];
-                createCheckbox(d, id, txt, "checkBoxContainer");
-                setCheckbox(id, true);
-            }
-        }
-        else //Creates a hidden untoggleable checkbox with the right id
-        {
-            let id = "showPlant" + data.plantSelect;
-            let txt = "Plant " + data.plantSelect;
-            box = createCheckbox(guiDiv, id, txt);
-            document.getElementById(box).style.display = "none";
+            let id = "showPlant" + DBdata.facNums[i];
+            let txt = "Plant " + DBdata.facNums[i];
+            createCheckbox1(guiDiv, id, txt, "guiCheckboxNoMargin");
             setCheckbox(id, true);
         }
-        /*  The scaling for each graph is based on whether the other one is being displayed
-         *  Both checkboxes need to be created even if only one is being displayed
-         *  If only one chart type is being displayed, these check boxes are hidden
-         *      and the one with no data is unchecked
-         */
-        if (data.weatherExists || data.powerExists)
+        //createCheckbox returns id of the div its in for hiding
+        guiDiv.appendChild(document.createElement("br"));
+        guiDiv.appendChild(document.createTextNode("Displayed Data:"));
+        createCheckbox1(guiDiv, "overlayGraphs", "Overlay Graphs", "guiCheckboxNoMargin");
+        setCheckbox("overlayGraphs", false);
+
+        guiDiv.appendChild(document.createElement("br"));
+        createCheckbox1(guiDiv, "weatherGraph", "Weather Graph", "guiCheckboxNoMargin");
+        setCheckbox("weatherGraph", true);
+
+        if (DBdata.weatherExists)
         {
-            let id1 = "weatherGraph";
-            let txt1 = "Weather Graph"
-            let id2 = "powerGraph";
-            let txt2 = "Power Graph";
-
-            //Get id's to hide them later if all types arent loaded with data
-
-            let d = document.createElement("div");
-            guiDiv.appendChild(d);
-            let weatherBox = createCheckbox(d, id1, txt1, "checkBoxContainer");
-            let powerBox = createCheckbox(d, id2, txt2, "checkBoxContainer");
-            d.classList.add("inlineDiv");
-
-            setCheckbox(id1, true);
-            setCheckbox(id2, true);
-
-            if (data.weatherExists) setCheckbox(id1, true);
-            if (data.powerExists) setCheckbox(id2, true);
-
-            if (data.powerExists)
-            {
-                setCheckbox("showPowerReading", true);
-                setCheckbox(id2, true);
-            }
-            else
-            {
-                toggleHideElement(weatherBox);
-                toggleHideElement(powerBox);
-                setCheckbox(id2, false);
-            }
-            if (data.weatherExists)
-            {
-                setCheckbox("showWeatherReading", true);
-                setCheckbox(id1, true)
-            }
-            else
-            {
-                toggleHideElement(weatherBox);
-                toggleHideElement(powerBox);
-                setCheckbox(id1, false);
-            }
+            weatherGUI();
         }
-        createChartGUI();
-    }
+        guiDiv.appendChild(document.createElement("br"));
+        createCheckbox1(guiDiv, "powerGraph", "Power Graph", "guiCheckboxNoMargin");
+        setCheckbox("powerGraph", true);
 
-/*  Input:  None
-*   Output: None
-*   Desc:   Calls appropriate functions if data elements exist
-*/
-    const createChartGUI = () =>
-    {
-        if (data.powerExists)
+        if (DBdata.powerExists)
         {
-            powerGUIdiv = powerGUI();
+            powerGUI();
         }
-        if (data.weatherExists)
-        {
-            weatherGUIdiv = weatherGUI();
-        }
-    }
+    };
 
-/*  Input:  None
-*   Output: id of div element containing every element created in this function
-*   Desc:   Creates GUI elements for power reading display
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Creates GUI elements for power reading display
+    */
     const powerGUI = () =>
     {
-        let id = "powerGUIdiv";
-        let powerDiv = document.createElement("div");
-        powerDiv.setAttribute("id", id);
-        powerDiv.classList.add("inlineDiv");
+        //Put everything in this div to easily tab them all over
 
-        createCheckbox(powerDiv, "showAveragedPower", "Show Averaged Power");
+        let avgPowerBox = createCheckbox1(guiDiv, "showAveragedPower", "Show Averaged Data", "guiCheckboxNoMargin");
+        setCheckbox("showAveragedPower", true);
+        document.getElementById(avgPowerBox).classList.add("tabbedContent");
+
+        //Quickfix until i can figure something else out about this
+        let pNode = document.createElement("p");
+        pNode.style.marginLeft = "5em";
+        pNode.style.marginBottom = "-7px";
+        pNode.style.marginTop = "-7px";
+        pNode.innerHTML = "or";
+        guiDiv.appendChild(pNode);
 
         //Create list of every power source for a select,
         //[["powerControls", "Power Controls"], ["weatherControls", "Weather Controls"]];
         let arr = [];
-        arr.push({ "name": "Show All", "value" : "allVal"});
-        for (index = 0; index < data.facNums.length; index++)
+        arr.push({ "name": "All Power Arrays", "value": "allVal" });
+        for (index = 0; index < DBdata.facNums.length; index++)
         {
-            let fac = data.facNums[index];
-            let d = data.getFac(fac);
-            if (d)
+            let id = "showPlant" + DBdata.facNums[index];
+            if (document.getElementById(id).checked)
             {
-                for (i = 0; i < d.srcKeys.length; i++)
+                let fac = DBdata.facNums[index];
+                let d = DBdata.getFac(fac);
+                if (d)
                 {
-                    let str = d.srcKeys[i] + "select";  //id of this select
-                    arr.push({ "name" : d.srcKeys[i], "value" : str });
+                    for (i = 0; i < d.srcKeys.length; i++)
+                    {
+                        let str = d.srcKeys[i] + "select";  //id of this select
+                        arr.push({ "name": d.srcKeys[i], "value": str });
+                    }
                 }
             }
         }
-        powerGUIselect = createSelect(powerDiv, "powerGUIselect", "Or Select Specific Sources<br>(up/down arrow keys work)", arr);
-        guiDiv.appendChild(powerDiv);
-        document.getElementById(powerGUIselect).value = "allVal";
-        setCheckbox("showAveragedPower", true);
-        return id;
-    }
+        powerGUIselect = createSelect(guiDiv, "powerGUIselect", "", arr);
+        document.getElementById(powerGUIselect).classList.add("tabbedContent");
+    };
 
-/*  Input:  None
-*   Output: id of div element containing every element created in this function
-*   Desc:   Creates GUI elements for weather reading display
-*/
+    /*  Input:  None
+    *   Output: None
+    *   Desc:   Creates GUI elements for weather reading display
+    */
     const weatherGUI = () =>
     {
-        let id = "weatherGUIdiv"
-        let weatherDiv = document.createElement("div");
-        weatherDiv.setAttribute("id", id);
-        weatherDiv.classList.add("inlineDiv");
+        let ambientBox = createCheckbox1(guiDiv, "showAmbientData", "Ambient Data", "guiCheckboxNoMargin");
+        setCheckbox("weatherGraph", true);
+        document.getElementById(ambientBox).classList.add("tabbedContent");
 
-        //Show ambient data
-        createCheckbox(weatherDiv, "showAmbientData", "Show Ambient Temp");
-        //Show module data
-        createCheckbox(weatherDiv, "showModuleData", "Show Module Temp");
-        //Show irridation data
-        createCheckbox(weatherDiv, "ShowIrridData", "Show Irradiation");
+        let moduleBox = createCheckbox1(guiDiv, "showModuleData", "Module Data", "guiCheckboxNoMargin");
+        setCheckbox("weatherGraph", true);
+        document.getElementById(moduleBox).classList.add("tabbedContent");
 
-        guiDiv.appendChild(weatherDiv);
+        let irridBox = createCheckbox1(guiDiv, "showIrridData", "Irradiation Data", "guiCheckboxNoMargin");
+        setCheckbox("weatherGraph", true);
+        document.getElementById(irridBox).classList.add("tabbedContent");
+
         setCheckbox("showAmbientData", true);
         setCheckbox("showModuleData", true);
-        setCheckbox("ShowIrridData", true);
-        return id;
-    }
+        setCheckbox("showIrridData", true);
+    };
 
-/*  Input:  id of select element calling this event
-*   Output: None
-*   Desc:   Currently just a simple callback to charts.draw(). Associated with a change attribute on select elements
-*/
+    /*  Input:  id of select element calling this event
+    *   Output: None
+    *   Desc:   Currently just a simple callback to DBcharts.draw(). Associated with a change attribute on select elements
+    */
     const selectEvent = (id) =>
     {
-        charts.draw();
-    }
+        DBcharts.draw();
+    };
 
-/*  Input:  id expected to belong to a div element
-*   Output: None
-*   Desc:   Toggles display style property of element
-*/
+    /*  Input:  id expected to belong to a div element
+    *   Output: None
+    *   Desc:   Toggles display style property of element
+    */
     const toggleHideElement = (id) =>
     {
         let e = document.getElementById(id);
         if (e.style.display == "none")
             e.style.display = "block";
         else e.style.display = "none";
-    }
+    };
 
     //Creates a dropdown using the provided array. Returns the id 
     //example array: [["powerControls", "Power Controls"], ["weatherControls", "Weather Controls"]];
-/*  Input:  rDiv div element, id string, labelTxt string, arr[] array
- *          rDiv - receiveing div for created div to be added as a child to
- *          id - id of the actual select element
- *          labelTxt - text shown above the select element
- *          arr[] - data to populate the select element with
-*   Output: Same id passed to function, to save a single line of code lol
-*   Desc:   Creates a select element populated with passed data and inside its own div, added to children of rDiv
-*/
+    /*  Input:  rDiv div element, id string, labelTxt string, arr[] array
+     *          rDiv - receiveing div for created div to be added as a child to
+     *          id - id of the actual select element
+     *          labelTxt - text shown above the select element
+     *          arr[] - data to populate the select element with
+    *   Output: Same id passed to function, to save a single line of code lol
+    *   Desc:   Creates a select element populated with passed data and inside its own div, added to children of rDiv
+    */
     const createSelect = (rDiv, id, labelTxt, arr) =>
     {
         let selectDiv = document.createElement("div");
@@ -969,16 +979,16 @@ const optionsGUI = (() =>
         selectDiv.appendChild(selectNode);
         rDiv.appendChild(selectDiv);
         return id;
-    }
+    };
 
-/*  Input:  rDiv, id, text, cls
- *          rDiv receiving div for the created div to be added to as a child
- *          id - id of actual checkbox element being created
- *          text - Label text next to the checkbox
- *          cls - CSS class to be associated with this checkbox, with a default valute
-*   Output: id of div element containing the created checkbox
-*   Desc:
-*/
+    /*  Input:  rDiv, id, text, cls
+     *          rDiv receiving div for the created div to be added to as a child
+     *          id - id of actual checkbox element being created
+     *          text - Label text next to the checkbox
+     *          cls - CSS class to be associated with this checkbox, with a default valute
+    *   Output: id of div element containing the created checkbox
+    *   Desc:
+    */
     const createCheckbox = (rDiv, id, text, cls = "checkBoxContainerCenter") =>
     {
         let boxNode = document.createElement("div");
@@ -996,21 +1006,44 @@ const optionsGUI = (() =>
         inputNode.setAttribute("name", id);
         inputNode.style.marginLeft = "2px";
         //Toggling a checkbox immediately redraws graphs
-        inputNode.addEventListener("change", function () { charts.draw(); }, false);
-        
+        inputNode.addEventListener("change", function () { DBcharts.draw(); }, false);
+
 
         boxNode.appendChild(labelNode);
         boxNode.appendChild(inputNode);
         rDiv.appendChild(boxNode);
-        //setCheckbox(id, true);
         return divId;
-    }
+    };
+    //margin left 40px for a "tabbed" checkbox
+    const createCheckbox1 = (rDiv, id, label, cls = "") =>
+    {
+        //Create containing div for the box so it can be hidden if needed
+        let boxNode = document.createElement("div");
+        boxNode.classList.add(cls);
+        let divId = id + "div";
+        boxNode.setAttribute("id", divId);
 
-/*  Input:  value_check string - value to check if it is selected or not
-*   Output: boolean
-*   Desc:   Returns a boolean value based on if a query (sourceKey expected) is selected in the powerGUI select element
- *          This select element is a multiple select
-*/
+        let inputNode = document.createElement("input");
+        inputNode.setAttribute("id", id);
+        inputNode.setAttribute("type", "checkbox");
+        inputNode.classList.add("checkmark");
+        inputNode.addEventListener("change", function () { DBcharts.draw(); }, false);
+
+        let labelNode = document.createElement("label");
+        labelNode.setAttribute("for", id);
+        labelNode.innerHTML = label;
+
+        boxNode.appendChild(inputNode);
+        boxNode.appendChild(labelNode);
+        rDiv.appendChild(boxNode);
+        return divId;
+    };
+
+    /*  Input:  value_check string - value to check if it is selected or not
+    *   Output: boolean
+    *   Desc:   Returns a boolean value based on if a query (sourceKey expected) is selected in the powerGUI select element
+     *          This select element is a multiple select
+    */
     const powerGUIselectValidate = (value_check) =>
     {
         let selected = [];
@@ -1028,20 +1061,131 @@ const optionsGUI = (() =>
         if (found)
             return true;
         else return false;
-    }
+    };
+
+    return { init, selectEvent, powerGUIselectValidate };
+}
+)();
+
+//######################################################################################################################################
+//######################################################################################################################################
+//######################################                Static site JS                  ################################################
+//######################################################################################################################################
 
 /*  Input:  None
 *   Output: None
-*   Desc:   Clears all child elements in the guiDiv element
+*   Desc:   Loops through all HTML elements looking for the attribute "html-include"
+            It then attemps to load the file in the parameter
+            <div html-include="nav.html"></div>
+
+    https://www.w3schools.com/howto/howto_html_include.asp
 */
-    const clearGUIdiv = () =>
+function includeHTML(title = undefined)
+{
+    var z, i, elmnt, file, xhttp;
+    /* Loop through a collection of all HTML elements: */
+    z = document.getElementsByTagName("*");
+    for (i = 0; i < z.length; i++)
     {
-        while (guiDiv.firstChild())
+        elmnt = z[i];
+        /*search for elements with a certain atrribute:*/
+        file = elmnt.getAttribute("html-include");
+        if (file)
         {
-            guiDiv.removeChild(guiDiv.lastChild);
+            /* Make an HTTP request using the attribute value as the file name: */
+            xhttp = new XMLHttpRequest();
+            xhttp.onreadystatechange = function ()
+            {
+                if (this.readyState == 4)
+                {
+                    if (this.status == 200) { elmnt.innerHTML = this.responseText; }
+                    if (this.status == 404) { elmnt.innerHTML = "Page not found."; }
+                    /* Remove the attribute, and call this function once more: */
+                    elmnt.removeAttribute("html-include");
+                    includeHTML(title);
+                }
+            };
+            if (title != undefined)
+                document.title = title;
+
+            xhttp.open("GET", file, true);
+            xhttp.send();
+            /* Exit the function: */
+            return;
+        }
+    }
+}
+
+/*  Input:  None
+*   Output: None
+*   Desc:   Called on form submit button press.
+*/
+function formSubmit()
+{
+    let dataValidated = false;
+    //Add functionality that makes sure the end date is after the start date. Print a message in lower left of the div depending. Red if error
+
+    let start = document.getElementById("startDate").value;
+    let end = document.getElementById("endDate").value;
+    let msg = document.getElementById("formMessage");
+    msg.innerHTML = "";
+
+    if (checkDateOrder(start, end))
+    {
+        dataValidated = true;
+    }
+    else //Check a couple edge cases
+    {
+        //Check to see if its last day of data. This code should never be called because of maximum value
+        if (start == "2020-05-23")
+        {
+            let pos = start.length - 2;    //These should always be the same
+            let front = start.slice(0, pos);
+            let day = start.slice(pos, pos + 2);
+            day = parseInt(day);
+            day--;
+            start = front + day;
+            dataValidated = true;
+        }
+        else if (start == end) //Increment end date by one day if the range is equal
+        {
+            let pos = end.length - 2;    //These should always be the same
+            let front = end.slice(0, pos);
+            let day = end.slice(pos, pos + 2);
+            day = parseInt(day);
+            day++;
+            end = front + day;
+            dataValidated = true;
+        }
+        else    //Means the start day comes after the end day
+        {
+            msg.innerHTML = "Start date must come before end date";
         }
     }
 
-    return { init, selectEvent, powerGUIselectValidate};
+
+    if (dataValidated)
+    {
+        DBcharts.setDateRange(start, end);
+        DBcharts.draw();
+    }
 }
-)();
+
+/*  Input:  d1 string, d2 string
+            Dates follow this format "yyyy-mm-dd"
+*   Output: Boolean value
+*   Desc:   Checks of LHS date comes before RHS date
+            ie: if ( LHS < RHS ) return true;
+*/
+function checkDateOrder(d1, d2)
+{
+    let pos = d2.length - 2;    //These should always be the same
+    let day1 = d1.slice(pos, pos + 2);
+    let day2 = d2.slice(pos, pos + 2);
+    day1 = parseInt(day1);
+    day2 = parseInt(day2);
+
+    if (day1 < day2) return true;
+    else return false;
+
+}

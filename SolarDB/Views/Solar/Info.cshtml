@@ -1,13 +1,21 @@
 ﻿@model SolarDB.ViewModel.SolarViewModel
 
 <script type="text/javascript">
-    parseData(
-        @Html.Raw(Json.Serialize(@Model.facilities)),
-        @Html.Raw(Json.Serialize(@Model.weatherReadings)),
-        @Html.Raw(Json.Serialize(@Model.powerReadings)),
-        @Html.Raw(Json.Serialize(Model.powerSources)),
-        @Model.plantNum
-    );
+
+    //     parseData(
+       // @Html.Raw(Json.Serialize(@Model.facilities)),
+      //  @Html.Raw(Json.Serialize(@Model.weatherReadings)),
+     //   @Html.Raw(Json.Serialize(@Model.powerReadings)),
+    //    @Html.Raw(Json.Serialize(Model.powerSources)),
+    //    @Model.plantNum
+   // );
+    let facilities = @Html.Raw(Json.Serialize(@Model.facilities));
+    let weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
+    let power = @Html.Raw(Json.Serialize(@Model.powerReadings));
+    let powerSources = @Html.Raw(Json.Serialize(Model.powerSources));
+    let plantNum = @Model.plantNum;
+    parseData(facilities, weather, power, powerSources, plantNum);
+
 </script>
 
 @{
@@ -50,7 +58,6 @@
 
     .checkBoxContainer{
         border: solid black 1px;
-        display:inline-block;
         float: left;
         padding: 2px;
         margin: 1px;
