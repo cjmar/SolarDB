@@ -44,7 +44,7 @@ int main()
 
 		//Compare the files sans the date
 		std::ifstream input1(input_file);
-		std::ifstream input2(input_file);
+		std::ifstream input2(output_file);
 
 		string l1, l2;
 		int errors = 0;
