@@ -24,3 +24,4 @@ The webapp will have interactive graphs for viewing the data and attempt to answ
 3. Can we identify faulty or suboptimally performing equipment?
 
 
+Static version of this website with 8 days worth of data can be found here: https://cjmar.github.io/
