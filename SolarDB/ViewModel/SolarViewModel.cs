@@ -97,9 +97,9 @@ namespace SolarDB.ViewModel
         {
             dateStart = DateTime.Parse("05-15-2020 00:00"); //By default set to the first days worth of data
             dateEnd = DateTime.Parse("05-16-2020 00:00");
-            showWeather = false;
-            showPower = false;
-            plantNum = 4135001;
+            showWeather = true;
+            showPower = true;
+            plantNum = -1;
             weatherReadings = new List<SVMWeather>();
             powerReadings = new List<SVMPower>();
             powerSources = new List<SVMPowerSource>();

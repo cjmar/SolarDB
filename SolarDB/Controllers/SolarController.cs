@@ -19,26 +19,20 @@ namespace SolarDB.Controllers
         *  Output:  None
         *  Desc:    Information object for the selection form in info.cshtml
         */
-    public class SelectTarget
+    public class DateRange
     {
         public DateTime dateStart { get; set; } //  Shows the first day by default
         public DateTime dateEnd { get; set; }   //
-        public int plantNum { get; set; }       //  -1 means all. Shows "Plant_1" first
-        public bool showWeather { get; set; }   //  Show weather readings
-        public bool showPower { get; set; }     //  Show power readings
 
         /*  
         *  Input:   None
         *  Output:  None
         *  Desc:    Default constructor with default values found in form
         */
-        public SelectTarget()
+        public DateRange()
         {
             dateStart = DateTime.Parse("05-15-2020");
             dateEnd = DateTime.Parse("05-16-2020");
-            plantNum = 4135001;
-            showWeather = false;
-            showPower = false;
         }
 
         /*  
@@ -50,9 +44,6 @@ namespace SolarDB.Controllers
         {
             System.Diagnostics.Debug.WriteLine("dateStart: " + dateStart.ToString());
             System.Diagnostics.Debug.WriteLine("dateEnd: " + dateEnd.ToString());
-            System.Diagnostics.Debug.WriteLine("plantNum: " + plantNum);
-            System.Diagnostics.Debug.WriteLine("showWeather: " + showWeather);
-            System.Diagnostics.Debug.WriteLine("showPower: " + showPower);
         }
     }
 
@@ -75,7 +66,7 @@ namespace SolarDB.Controllers
         public async Task<IActionResult> Info()
         {
             //Get all Facilities for dropdown 
-            SelectTarget info = new SelectTarget();
+            DateRange info = new DateRange();
             SolarViewModel rtn = await SVMBuilder(info);
 
             return View(rtn);
@@ -92,13 +83,10 @@ namespace SolarDB.Controllers
         public async Task<IActionResult> PostInfo()
         {
 
-            SelectTarget tgt = new SelectTarget
+            DateRange tgt = new DateRange
             {
                 dateStart = DateTime.Parse(HttpContext.Request.Form["startDate"]),
-                dateEnd = DateTime.Parse(HttpContext.Request.Form["endDate"]),
-                plantNum = parsePlantNumber(HttpContext.Request.Form["plantNum"]),
-                showWeather = parseCheckBox(HttpContext.Request.Form["showWeather"]),
-                showPower = parseCheckBox(HttpContext.Request.Form["showPower"]),
+                dateEnd = DateTime.Parse(HttpContext.Request.Form["endDate"])
             };
 
             tgt.printDebug();
@@ -114,16 +102,16 @@ namespace SolarDB.Controllers
         *  Output:  Task, SolarViewModel object
         *  Desc:    Creates SolarViewModel object based on parameters in info object
         */
-        private async Task<SolarViewModel> SVMBuilder(SelectTarget info)
+        private async Task<SolarViewModel> SVMBuilder(DateRange info)
         {
             //SVM default values are empty List<T>. Dates and all facilities are grabbed for GUI
             SolarViewModel rtn = new SolarViewModel
             {
                 dateStart = info.dateStart,
                 dateEnd = info.dateEnd,
-                showPower = info.showPower,
-                showWeather = info.showWeather,
-                plantNum = info.plantNum,
+                showPower = true,
+                showWeather = true,
+                plantNum = -1,
 
                 facilities = await _context.Facilities.OrderBy(f => f.PlantNumber)
                                                         .Select(f => new SVMFacility(f))
@@ -133,13 +121,13 @@ namespace SolarDB.Controllers
             //              execution is deferred until the ToList() when dealing with an IQueryable
 
             //Populate WeatherReadings
-            if (info.showWeather)
+            if (rtn.showWeather)
             {
                 rtn.weatherReadings = await PopulateWeatherReadings(info);
             }
 
             //Populate PowerReadings and sources
-            if (info.showPower)
+            if (rtn.showPower)
             {
                 rtn.powerReadings = await PopulatePowerReadings(info);
                 rtn.powerSources = await PopulatePowerSources(info);
@@ -153,16 +141,13 @@ namespace SolarDB.Controllers
         *  Output:  Task, List
         *  Desc:    Queries database for list of power readings based on target parameters
         */
-        private async Task<List<SVMPower>> PopulatePowerReadings(SelectTarget info)
+        private async Task<List<SVMPower>> PopulatePowerReadings(DateRange info)
         {
-            //Empty string means get all sources
-            if (info.plantNum == -1)    //ALL power readings from ALL facilities
-            {
-                return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime < info.dateEnd)
-                                                        .OrderBy(pr => pr.DateAndTime)
-                                                        .Select(pr => new SVMPower(pr))
-                                                        .ToListAsync();
-            }
+            return await _context.PowerReadings.Where(pr => pr.DateAndTime >= info.dateStart && pr.DateAndTime < info.dateEnd)
+                                                    .OrderBy(pr => pr.DateAndTime)
+                                                    .Select(pr => new SVMPower(pr))
+                                                    .ToListAsync();
+            /*
             else                        //power readings from a specific facility
             {
                 //Join PowerSource and PowerReading where (PS.SourceKey == PR.SourceKey) from there take PR where DateTime is within bounds
@@ -174,7 +159,8 @@ namespace SolarDB.Controllers
                                 .OrderBy(pr => pr.DateAndTime)
                                 .Select(pr => new SVMPower(pr))
                                 .ToListAsync();
-            }   
+            }
+            */
         }
 
         /*  
@@ -182,16 +168,14 @@ namespace SolarDB.Controllers
         *  Output:  Task, List
         *  Desc:    Queries database for weather readings based on SelectTarger parameters
         */
-        private async Task<List<SVMWeather>> PopulateWeatherReadings(SelectTarget info)
+        private async Task<List<SVMWeather>> PopulateWeatherReadings(DateRange info)
         {
             //All WeatherReadings
-            if (info.plantNum == -1)
-            {
-                return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime < info.dateEnd)
-                                                        .OrderBy(wr => wr.DateAndTime)
-                                                        .Select(wr => new SVMWeather(wr))
-                                                        .ToListAsync();
-            }
+            return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime < info.dateEnd)
+                                                    .OrderBy(wr => wr.DateAndTime)
+                                                    .Select(wr => new SVMWeather(wr))
+                                                    .ToListAsync();
+            /*
             else  //Plant Specific Readings
             {
                 return await _context.WeatherReadings.Where(wr => wr.DateAndTime >= info.dateStart && wr.DateAndTime < info.dateEnd)
@@ -200,34 +184,28 @@ namespace SolarDB.Controllers
                                                          .Select(wr => new SVMWeather(wr))
                                                          .ToListAsync();
             }
+            */
         }
 
-        /*
-         * 
-         * 
-         */
         /*  
         *  Input:   SelectTarget object
         *  Output:  Task, List
         *  Desc:    Queries database for power sources based on SelectTarget parameters
         */
-        private async Task<List<SVMPowerSource>> PopulatePowerSources(SelectTarget info)
+        private async Task<List<SVMPowerSource>> PopulatePowerSources(DateRange info)
         {
-            //Empty string means get all sources
-
-            if (info.plantNum == -1)    //ALL power sources from ALL facilities
-            {
-                return await _context.PowerSources
-                                .OrderBy(ps => ps.PlantNumber)
-                                .Select(ps => new SVMPowerSource(ps))
-                                .ToListAsync();
-            }
+            return await _context.PowerSources
+                            .OrderBy(ps => ps.PlantNumber)
+                            .Select(ps => new SVMPowerSource(ps))
+                            .ToListAsync();
+            /*
             else                        //ALL power sources from a specific facility
             {
                 return await _context.PowerSources.Where(ps => ps.PlantNumber.Equals(info.plantNum))
                                                     .Select(ps => new SVMPowerSource(ps))
                                                     .ToListAsync();
             }
+            */
         }
 
         /*  
@@ -259,5 +237,5 @@ namespace SolarDB.Controllers
             }
             return int.Parse(s);
         }
-    }
+    }//End SolarControll
 }

@@ -1,103 +1,15 @@
 ﻿@model SolarDB.ViewModel.SolarViewModel
 
 <script type="text/javascript">
-    parseData(
-        @Html.Raw(Json.Serialize(@Model.facilities)),
-        @Html.Raw(Json.Serialize(@Model.weatherReadings)),
-        @Html.Raw(Json.Serialize(@Model.powerReadings)),
-        @Html.Raw(Json.Serialize(Model.powerSources)),
-        @Model.plantNum
-    );
+    let facilities = @Html.Raw(Json.Serialize(@Model.facilities));
+    let weather = @Html.Raw(Json.Serialize(@Model.weatherReadings));
+    let power = @Html.Raw(Json.Serialize(@Model.powerReadings));
+    let powerSources = @Html.Raw(Json.Serialize(Model.powerSources));
 </script>
 
 @{
     ViewData["Title"] = "Graphing";
 }
-
-<style>
-
-    #container1 {
-        width: 100%;
-        height: 100%;
-    }
-
-    .genericContainer {
-        height: 100%;
-        float: left;
-        text-align:center;
-    }
-
-    .inlineDiv
-    {
-        display:inline-block;
-        text-align:center;
-        margin:0 auto;
-    }
-
-    #formDiv {
-        width:auto;
-        border: solid 1px black;
-        float: left;
-        padding: 2px;
-        text-align:center;
-    }
-
-    #textBox {
-        float: left;
-        margin-left: 10px;
-        padding: 2px;
-    }
-
-    .checkBoxContainer{
-        border: solid black 1px;
-        display:inline-block;
-        float: left;
-        padding: 2px;
-        margin: 1px;
-        margin-bottom: 3px;
-    }
-
-    .checkBoxContainerCenter 
-    {
-        border: solid black 1px;
-        margin:1px;
-        padding: 2px;
-        margin-bottom: 3px;
-    }
-
-    .checkBoxList {
-        display: none;
-    }
-
-    .sideBySide {
-        width: 50%;
-        height: 100%;
-        float: left;
-        overflow-y: auto;
-    }
-
-    .tableStyle {
-        border: 1px solid black;
-        padding: 1px;
-    }
-
-    th {
-        border-left: solid black 1px;
-    }
-
-    .tableStyle tr th {
-        font-size: 8pt;
-        text-align: center;
-    }
-
-    .clear {
-        clear: both;
-    }
-
-    canvas {
-        border: solid 1px black;
-    }
-</style>
 
 <!-- ###########################################
      ###########################################
@@ -110,72 +22,29 @@
 
 <div class="clear"><br /><br /></div>
 
-<div id="formDiv">
-    <form method="post" action="">
-        <label for="dateStart">Start Date</label>
-        <input type="date" name="startDate" value="@Model.dateStart.ToString("yyyy-MM-dd")" />
+<div class="formDiv">
+    <label for="dateStart">Start Date</label>
+    <input type="date" id="startDate" name="startDate" value="@Model.dateStart.ToString("yyyy-MM-dd")" class="dateBox" min="2020-05-15" max="2020-05-22" />
 
-        <label for="dateEnd">End Date</label>
-        <input type="date" name="endDate" value="@Model.dateEnd.Date.ToString("yyyy-MM-dd")" />
-        <br />
-        <div class="inlineDiv">
-            <div class="checkBoxContainer">
-                <label for="showWeather">Load Weather Readings</label>
-                <input type="checkbox" id="showWeatherReading" name="showWeather" value="false" onchange="toggleCheckbox('showWeatherReading')" />
-            </div>
-            <div class="checkBoxContainer">
-                <label for="showPower">Load Power Readings</label>
-                <input type="checkbox" id="showPowerReading" name="showPower" value="false" onchange="toggleCheckbox('showPowerReading');"/>
-            </div>
-        </div>
-        <div class="clear"></div>
-        <label for="PlantNum" style="float:left;">Plant</label>
-        <select id="PlantNum" style="float:left;" name="plantNum">
-            @{
-                foreach (var fc in Model.facilities)
-                {
-                    if (Model.plantNum == fc.PlantNumber)
-                    {
-                        <option selected value="@fc.PlantNumber">@fc.PlantNumber</option>
-                    }
-                    else
-                    {
-                        <option value="@fc.PlantNumber">@fc.PlantNumber</option>
-                    }
-                }
-                if (Model.plantNum == -1)
-                {
-                    <option selected value="All">All</option>
-                }
-                else
-                {
-                    <option value="All">All</option>
-                }
-            }
-        </select>
-        <input type="submit" style="float:right;" value="Submit" />
-    </form>
+    <label for="dateEnd">End Date</label>
+    <input type="date" id="endDate" name="endDate" value="@Model.dateEnd.Date.ToString("yyyy-MM-dd")" class="dateBox" min="2020-05-16" max="2020-05-23" />
+    <br />
+    <span id="formMessage"></span>
+    <button type="button" class="defaultButton" onclick="formSubmit()">Submit</button>
 </div>
 <div id="textBox">
     <p>Choose the range of dates of data to be graphed.</p>
-    <p>Select which types of data you would like to see, and for which power plant.</p>
 </div>
 <div class="clear"><br /></div>
+<hr />
+<div class="genericContainer">
+    <canvas id="graph" width="800" height="500">Your browser does not support the canvas element.</canvas>
+</div>
 
-<!--
-    Main content Shown if post
-    Saves selections between page loads
--->
-@if (Context.Request.Method == "POST")
-{
-    <hr />
-    <div class="genericContainer">
-        <canvas id="graph" width="800" height="500">Your browser does not support the canvas element.</canvas>
-    </div>
+<div class="genericContainer">
+    <div class="genericContainer" id="GUIcontrol"></div>
+</div>
 
-    <div class="genericContainer" style="width:25%;margin-left:3px;">
-        <div class="genericContainer" id="GUIcontrol"></div>
-    </div>
-
-    <script>onReadyPOST()</script>
-}
+<script>
+    onReady();
+</script>
