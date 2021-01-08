@@ -20,8 +20,8 @@ It has a real time graph which can be used to answer a few questions regarding s
 
 1. Can we predict the power generation for next couple of days? - this allows for better grid management
 2. Can we identify the need for panel cleaning/maintenance?
-3. Can we identify faulty or suboptimally performing equipment?
+3. Can we identify faulty or sub optimally performing equipment?
 
-The framework will also have an API for requesting and adding more data. This will allow for the framework to act as a core comcponent for logging information and managing a power plant in day to day operations.
+The framework will also have an API for requesting and adding more data. This will allow for the framework to act as a core component for logging information and managing a power plant in day-to-day operations.
 
-Static version of this website with 8 days worth of data can be found here: https://cjmar.github.io/
+Static version of this website with 8 days' worth of data can be found here: https://cjmar.github.io/
