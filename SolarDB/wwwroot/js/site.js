@@ -1,11 +1,13 @@
 ﻿
 /*
+    Graph tool for SolarDB
+
     This is a slightly edited version from the .NET Core version of the project
         They are not compatable with each other
 */
 
 //A global variable which will hold all the data
-var DBdata = [];
+var DBdata;
 
 /*  Input:  ID of a checkbox element, boolean value to change it to
  *  Output: None
@@ -47,8 +49,9 @@ function toggleCheckbox(id)
  *  Output: None
  *  Desc:   Called after the page is loaded
  */
-function onReadyPOST()
+function onReady()
 {
+    initDBdata();
     parseData(facilities, weather, power, powerSources, -1);
     //console.log("data");
     //console.log(DBdata);
@@ -56,39 +59,52 @@ function onReadyPOST()
     DBcharts.init("graph");
 }
 
-/*  Input:  Facility number
-*  Output: Facility object
-*  Desc:   Retrieves reference to the facility queried, or undefined
+/*  Input:  None
+*   Output: None
+*   Desc:   Creates and initilizes the functions for the DBdata JSON object
+*           Does not populate it with data
 */
-DBdata.getFac = function (facNum)
+function initDBdata()
 {
-    return this.find(e => e.facility == facNum);
-};
+    /*  JSON Datastructure which will contain all data passed to the page
+    * 
+    */
+    DBdata = [];
 
-/*  Input:  SourceKey String
-*  Output: SourceKey array
-*  Desc:   Searches for a sourceKey array in any facility and returns it, or undefined
-*/
-DBdata.getSrc = function (srcStr) 
-{
-    for (i = 0; i < this.length; i++)
+    /*  Input:  Facility number
+    *  Output: Facility object
+    *  Desc:   Retrieves reference to the facility queried, or undefined
+    */
+    DBdata.getFac = function (facNum)
     {
-        if (this[i][srcStr])
-        {
-            return this[i][srcStr];
-        }
-    }
-};
+        return this.find(e => e.facility == facNum);
+    };
 
-/*  Input:  SourceKey String
-*  Output: Facility Object
-*  Desc:   Returns facility the sourceKey belongs to, or undefined
-*/
-DBdata.getFacBySrc = function (srcStr)
-{
-    for (i = 0; i < this.length; i++)
-        if (this[i][srcStr]) return this[i];
-};
+    /*  Input:  SourceKey String
+    *  Output: SourceKey array
+    *  Desc:   Searches for a sourceKey array in any facility and returns it, or undefined
+    */
+    DBdata.getSrc = function (srcStr) 
+    {
+        for (i = 0; i < this.length; i++)
+        {
+            if (this[i][srcStr])
+            {
+                return this[i][srcStr];
+            }
+        }
+    };
+
+    /*  Input:  SourceKey String
+    *  Output: Facility Object
+    *  Desc:   Returns facility the sourceKey belongs to, or undefined
+    */
+    DBdata.getFacBySrc = function (srcStr)
+    {
+        for (i = 0; i < this.length; i++)
+            if (this[i][srcStr]) return this[i];
+    };
+}
 
 /* Input:   Several JSON passed in by backend
  *              facilities: All facility numbers
@@ -114,14 +130,14 @@ DBdata.getFacBySrc = function (srcStr)
  *  Desc:   The main data is scanned through only once to produce this JSON object
  *          Each data point type can then be accessed quickly and without reading irrelevant data
  */
-function parseData(facilities, weather, power, powerSource, plantSelect)
+function parseData(facilities, weather, power, powerSource)
 {
     let dateAdded = 0;      //Boolean to ensure dates only populated once
     DBdata.dates = [];     //List of all the dates
     DBdata.facNums = [];   //List of all the facility numbers
     DBdata.weatherExists = weather.length > 0;
     DBdata.powerExists = power.length > 0;
-    DBdata.plantSelect = plantSelect;
+    DBdata.plantSelect = -1;
 
     //Add each of the facilities
     for (i = 0; i < facilities.length; i++)
@@ -1067,55 +1083,6 @@ const optionsGUI = (() =>
 }
 )();
 
-//######################################################################################################################################
-//######################################################################################################################################
-//######################################                Static site JS                  ################################################
-//######################################################################################################################################
-
-/*  Input:  None
-*   Output: None
-*   Desc:   Loops through all HTML elements looking for the attribute "html-include"
-            It then attemps to load the file in the parameter
-            <div html-include="nav.html"></div>
-
-    https://www.w3schools.com/howto/howto_html_include.asp
-*/
-function includeHTML(title = undefined)
-{
-    var z, i, elmnt, file, xhttp;
-    /* Loop through a collection of all HTML elements: */
-    z = document.getElementsByTagName("*");
-    for (i = 0; i < z.length; i++)
-    {
-        elmnt = z[i];
-        /*search for elements with a certain atrribute:*/
-        file = elmnt.getAttribute("html-include");
-        if (file)
-        {
-            /* Make an HTTP request using the attribute value as the file name: */
-            xhttp = new XMLHttpRequest();
-            xhttp.onreadystatechange = function ()
-            {
-                if (this.readyState == 4)
-                {
-                    if (this.status == 200) { elmnt.innerHTML = this.responseText; }
-                    if (this.status == 404) { elmnt.innerHTML = "Page not found."; }
-                    /* Remove the attribute, and call this function once more: */
-                    elmnt.removeAttribute("html-include");
-                    includeHTML(title);
-                }
-            };
-            if (title != undefined)
-                document.title = title;
-
-            xhttp.open("GET", file, true);
-            xhttp.send();
-            /* Exit the function: */
-            return;
-        }
-    }
-}
-
 /*  Input:  None
 *   Output: None
 *   Desc:   Called on form submit button press.
@@ -1159,15 +1126,19 @@ function formSubmit()
         }
         else    //Means the start day comes after the end day
         {
-            msg.innerHTML = "Start date must come before end date";
+            msg.innerHTML = '<span style="color:red;">Start date must come before end date</span>';
         }
     }
 
-
-    if (dataValidated)
+    let dataAlreadyLoaded = checkIfDataLoaded();
+    if (dataValidated && dataAlreadyLoaded)
     {
         DBcharts.setDateRange(start, end);
         DBcharts.draw();
+    }
+    else
+    {
+        console.log("dataValidated or dataAlreadyLoaded is false");
     }
 }
 
@@ -1188,4 +1159,13 @@ function checkDateOrder(d1, d2)
     if (day1 < day2) return true;
     else return false;
 
+}
+
+/*  Input:  None
+*   Output: Boolean value
+*   Desc:   Checks minimum and maximum vale in Data JSON to see if the data is already loaded
+*/
+function checkIfDataLoaded()
+{
+    return false;
 }
