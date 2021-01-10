@@ -58,11 +58,11 @@ namespace SolarDB.Controllers
         }
 
         /*  
-    *  Input:   None
-    *  Output:  Tas, View
-    *  Desc:    GET: /Solar
-    *           Retrieves info.cshtml page with default selection
-    */
+        *  Input:   None
+        *  Output:  Task, View
+        *  Desc:    GET: /Solar
+        *           Retrieves info.cshtml page with default selection
+        */
         public async Task<IActionResult> Info()
         {
             //Get all Facilities for dropdown 
@@ -70,6 +70,26 @@ namespace SolarDB.Controllers
             SolarViewModel rtn = await SVMBuilder(info);
 
             return View(rtn);
+        }
+
+        /*
+        * Input:    Starting and ending date URL parameters
+        * Output:   SolarViewModel serialized to JSON containing data between the two dates
+        * Desc:     GET: /Solar/api
+        */
+        [HttpGet, ActionName("API")]
+        public async Task<ActionResult<IEnumerable<string>>> API(string start, string end)
+        {
+            System.Diagnostics.Debug.WriteLine("api start: " + start + " end: " + end);
+            DateRange tgt = new DateRange
+            {
+                dateStart = DateTime.Parse(start),
+                dateEnd = DateTime.Parse(end)
+            };
+
+            SolarViewModel rtn = await SVMBuilder(tgt);
+
+            return Json(rtn);
         }
 
         /*  
